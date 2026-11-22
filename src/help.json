@@ -127,6 +127,25 @@
       ]
     },
     {
+      "title": "EQ and Reverb",
+      "lines": [
+        "Equalizer: Low 120 Hz,",
+        "Mid 1 kHz, High 6 kHz.",
+        "Centre = flat,",
+        "+-12 dB each way.",
+        "",
+        "Reverb: small stereo",
+        "room.",
+        "Mix 0 = off.",
+        "Size = decay time.",
+        "Damping = darker tail.",
+        "",
+        "These settings stay as",
+        "you set them when you",
+        "change preset."
+      ]
+    },
+    {
       "title": "Pitch Shift",
       "lines": [
         "Acts on all sections.",

@@ -926,6 +926,171 @@ int main(int argc, char **argv)
         api->destroy_instance(a);
     }
 
+    /* --------------------------------------------------------------- 19 */
+    printf("\n19. Equalizzatore a 3 bande (Low 120 Hz, Mid 1 kHz, High 6 kHz, +-12 dB)\n");
+    {
+        /* a bright, rich source: strings with Tone open; harmonics of one held note */
+        struct { const char *key; int note; double lo, hi; const char *nm; } B[3] = {
+            { "eq_low",  33,   40,   70, "Low" },       /* A1 = 55 Hz: only the fundamental, well under the 120 Hz corner */
+            { "eq_mid",  48,  700, 1400, "Mid" },       /* C3 harmonics around 1 kHz */
+            { "eq_high", 48, 7000, 13000, "High" },
+        };
+        double g_up[3], g_dn[3], other[3];
+        for (int b = 0; b < 3; b++) {
+            double e[3], oth[3];
+            for (int k = 0; k < 3; k++) {
+                void *in = blank_inst();
+                setp(in, "lvl_str", "0.8"); setp(in, "zone_str", "3"); setp(in, "tone", "1");
+                setp(in, B[b].key, k == 0 ? "0" : k == 1 ? "0.5" : "1");
+                rec_t r; rec_init(&r, 2.0);
+                ev_t e1[2] = { { 0.0, 1, B[b].note, 100 }, { 1.8, 0, B[b].note, 0 } };
+                run(in, 2.0, e1, 2, 0, &r, NULL);
+                const double f0 = 440.0 * pow(2.0, (B[b].note - 69) / 12.0);
+                e[k] = db_of(harm_energy(r.L + SR, SR / 2, f0, B[b].lo, B[b].hi));
+                /* a band the section must leave alone: 2-4 kHz for Low, 100-300 Hz harmonics for High/Mid */
+                oth[k] = b == 0 ? db_of(harm_energy(r.L + SR, SR / 2, f0, 2000, 4000)) : db_of(harm_energy(r.L + SR, SR / 2, f0, 70, 250));
+                rec_free(&r); api->destroy_instance(in);
+            }
+            g_dn[b] = e[0] - e[1]; g_up[b] = e[2] - e[1];
+            other[b] = fmax(fabs(oth[0] - oth[1]), fabs(oth[2] - oth[1]));
+            printf("      %-4s al minimo %+.1f dB, al massimo %+.1f dB; banda lontana si muove di %.1f dB\n", B[b].nm, g_dn[b], g_up[b], other[b]);
+            CHECK(g_up[b] > 8.0 && g_up[b] < 13.0 && g_dn[b] < -8.0 && g_dn[b] > -13.0, "%s: taglio/guadagno entro circa +-12 dB", B[b].nm);
+            CHECK(other[b] < 1.5, "%s: non tocca le bande lontane", B[b].nm);
+        }
+        /* flat = the previous sound, bit for bit (the sections are skipped) */
+        rec_t a, c; rec_init(&a, 1.5); rec_init(&c, 1.5);
+        void *i1 = new_inst(preset_by_name("Full Mix")), *i2 = new_inst(preset_by_name("Full Mix"));
+        setp(i2, "eq_low", "0.5"); setp(i2, "eq_mid", "0.5"); setp(i2, "eq_high", "0.5"); setp(i2, "rev_mix", "0");
+        chord(ev, &nev, 0.1, 1.2);
+        run(i1, 1.5, ev, nev, 1, &a, NULL); run(i2, 1.5, ev, nev, 1, &c, NULL);
+        int same = 1; for (int i = 0; i < a.n; i++) if (a.L[i] != c.L[i] || a.R[i] != c.R[i]) { same = 0; break; }
+        CHECK(same, "EQ piatto e riverbero a 0: uscita identica bit per bit");
+        rec_free(&a); rec_free(&c); api->destroy_instance(i1); api->destroy_instance(i2);
+    }
+
+    printf("\n20. Riverbero (Mix, Size, Damping)\n");
+    {
+        /* a short chord, then silence: only the reverb is left after 1.2 s */
+        double tail[4], tail_big[2], hf[2], lr = 0, pk_hot = 0; int bad = 0;
+        for (int m = 0; m < 2; m++) {
+            void *in = blank_inst();
+            setp(in, "lvl_str", "0.8"); setp(in, "zone_str", "3"); setp(in, "release", "0.05");
+            setp(in, "rev_mix", m ? "0.5" : "0");
+            rec_t r; rec_init(&r, 4.0);
+            chord(ev, &nev, 0.1, 0.8);
+            run(in, 4.0, ev, nev, 0, &r, NULL);
+            tail[m] = rms_of(r.L + (int)(1.4 * SR), (int)(0.4 * SR));
+            if (m) lr = lr_var(&r, (int)(1.4 * SR), (int)(0.4 * SR));
+            bad += has_bad(&r);
+            rec_free(&r); api->destroy_instance(in);
+        }
+        printf("      coda a 1.4 s: Mix 0 = %.1f dBFS, Mix 0.5 = %.1f dBFS (varianza L-R %.2e)\n", tail[0], tail[1], lr);
+        CHECK(tail[0] < -90.0, "Mix 0: nessuna coda dopo il rilascio");
+        CHECK(tail[1] > -55.0 && tail[1] < -15.0, "Mix 0.5: coda udibile ma non invadente");
+        CHECK(lr > 1e-9, "il riverbero e' stereo (L e R diversi)");
+        for (int sz = 0; sz < 2; sz++) {
+            void *in = blank_inst();
+            setp(in, "lvl_str", "0.8"); setp(in, "zone_str", "3"); setp(in, "release", "0.05");
+            setp(in, "rev_mix", "0.5"); setp(in, "rev_size", sz ? "1" : "0");
+            rec_t r; rec_init(&r, 6.0);
+            chord(ev, &nev, 0.1, 0.8);
+            run(in, 6.0, ev, nev, 0, &r, NULL);
+            tail_big[sz] = rms_of(r.L + (int)(3.0 * SR), (int)(0.5 * SR));
+            bad += has_bad(&r);
+            rec_free(&r); api->destroy_instance(in);
+        }
+        printf("      coda a 3 s: Size 0 = %.1f dBFS, Size 1 = %.1f dBFS\n", tail_big[0], tail_big[1]);
+        CHECK(fmax(tail_big[1], -120.0) > fmax(tail_big[0], -120.0) + 20.0, "Size: la stanza grande dura molto di piu' (coda a 3 s: %.0f contro %.0f dBFS)", tail_big[1], fmax(tail_big[0], -120.0));
+        for (int d = 0; d < 2; d++) {
+            void *in = blank_inst();
+            setp(in, "lvl_str", "0.8"); setp(in, "zone_str", "3"); setp(in, "release", "0.05"); setp(in, "tone", "1");
+            setp(in, "rev_mix", "0.5"); setp(in, "rev_size", "0.8"); setp(in, "rev_damp", d ? "1" : "0");
+            rec_t r; rec_init(&r, 4.0);
+            chord(ev, &nev, 0.1, 0.8);
+            run(in, 4.0, ev, nev, 0, &r, NULL);
+            hf[d] = db_of(band_energy(r.L + (int)(1.6 * SR), (int)(0.5 * SR), 4000, 9000)) - db_of(band_energy(r.L + (int)(1.6 * SR), (int)(0.5 * SR), 200, 900));
+            rec_free(&r); api->destroy_instance(in);
+        }
+        printf("      alti/bassi nella coda: Damp 0 %+.1f dB, Damp 1 %+.1f dB\n", hf[0], hf[1]);
+        CHECK(hf[0] > hf[1] + 6.0, "Damping scurisce la coda (%.1f dB in meno di alti)", hf[0] - hf[1]);
+        /* hard drive: full mix, biggest room, everything up, 24 keys */
+        {
+            void *in = new_inst(preset_by_name("Full Mix"));
+            setp(in, "rev_mix", "1"); setp(in, "rev_size", "1"); setp(in, "eq_low", "1"); setp(in, "eq_mid", "1"); setp(in, "eq_high", "1");
+            rec_t r; rec_init(&r, 4.0);
+            ev_t e2[24]; int n2 = 0;
+            for (int i = 0; i < 12; i++) e2[n2++] = (ev_t){ 0.1, 1, 36 + i * 4, 127 };
+            for (int i = 0; i < 12; i++) e2[n2++] = (ev_t){ 2.0, 0, 36 + i * 4, 0 };
+            run(in, 4.0, e2, n2, 1, &r, NULL);
+            double pk, rm; stats(r.L + SR / 2, 3 * SR, &pk, &rm); pk_hot = pk;
+            bad += has_bad(&r);
+            rec_free(&r); api->destroy_instance(in);
+        }
+        CHECK(bad == 0 && pk_hot < 1.0001, "Mix 1, Size 1, EQ al massimo: finito e senza overflow (picco %.2f)", pk_hot);
+        /* pulling Mix to zero clears the tail, so nothing old comes back when it is raised again */
+        {
+            void *in = blank_inst();
+            setp(in, "lvl_str", "0.8"); setp(in, "zone_str", "3"); setp(in, "release", "0.05"); setp(in, "rev_mix", "0.6"); setp(in, "rev_size", "1");
+            rec_t r; rec_init(&r, 1.2);
+            chord(ev, &nev, 0.0, 0.5);
+            run(in, 1.2, ev, nev, 0, &r, NULL);
+            setp(in, "rev_mix", "0");
+            rec_t r2; rec_init(&r2, 0.5);
+            run(in, 0.5, NULL, 0, 0, &r2, NULL);
+            double z = rms_of(r2.L + SR / 10, SR / 4);
+            setp(in, "rev_mix", "0.6");
+            rec_t r3; rec_init(&r3, 0.5);
+            run(in, 0.5, NULL, 0, 0, &r3, NULL);
+            double z3 = rms_of(r3.L + SR / 10, SR / 4);
+            CHECK(z < -90.0 && z3 < -90.0, "Mix a 0 azzera la coda; riportarlo su non fa tornare suoni vecchi (%.0f / %.0f dBFS)", z, z3);
+            rec_free(&r); rec_free(&r2); rec_free(&r3); api->destroy_instance(in);
+        }
+    }
+
+    printf("\n21. EQ e riverbero: preset, stato, CPU\n");
+    {
+        int hall = preset_by_name("Hall Strings"), choir = preset_by_name("Valley Choir");
+        void *in = new_inst(hall);
+        char v[32]; api->get_param(in, "rev_mix", v, sizeof v);
+        CHECK(hall >= 24 && choir >= 24 && atof(v) > 0.3, "i preset Hall Strings e Valley Choir usano il riverbero (rev_mix %s)", v);
+        setp(in, "rev_mix", "0.2"); setp(in, "eq_low", "0.8"); setp(in, "rev_size", "0.9");
+        char pb[16]; snprintf(pb, sizeof pb, "%d", 3); setp(in, "preset", pb);
+        char a[32], b[32], c[32];
+        api->get_param(in, "rev_mix", a, sizeof a); api->get_param(in, "eq_low", b, sizeof b); api->get_param(in, "rev_size", c, sizeof c);
+        CHECK(fabs(atof(a) - 0.2) < 1e-3 && fabs(atof(b) - 0.8) < 1e-3 && fabs(atof(c) - 0.9) < 1e-3,
+              "cambiando preset EQ e riverbero restano come li hai messi (mix %s, low %s, size %s)", a, b, c);
+        static char st[4096]; api->get_param(in, "state", st, sizeof st);
+        void *in2 = api->create_instance(".", NULL); setp(in2, "state", st);
+        static char st2[4096]; api->get_param(in2, "state", st2, sizeof st2);
+        CHECK(strcmp(st, st2) == 0 && strstr(st, "\"rev_damp\"") && strstr(st, "\"eq_high\""), "lo stato include EQ e riverbero e fa il giro completo");
+        api->destroy_instance(in); api->destroy_instance(in2);
+        int bad = 0;
+        for (int p = 0; p < 15; p++) {
+            void *o = new_inst(p); char t[32];
+            api->get_param(o, "rev_mix", t, sizeof t); if (atof(t) != 0.0) bad++;
+            api->get_param(o, "eq_low", t, sizeof t);  if (fabs(atof(t) - 0.5) > 1e-6) bad++;
+            api->destroy_instance(o);
+        }
+        CHECK(bad == 0, "i preset precedenti hanno EQ piatto e riverbero a zero");
+
+        void *fx = new_inst(preset_by_name("Full Mix"));
+        setp(fx, "lvl_org", "0.4"); setp(fx, "zone_org", "3"); setp(fx, "rev_mix", "0.5"); setp(fx, "rev_size", "0.8");
+        setp(fx, "eq_low", "0.7"); setp(fx, "eq_mid", "0.3"); setp(fx, "eq_high", "0.7");
+        for (int i = 0; i < 24; i++) send(fx, 0x90, 36 + i * 2, 100);
+        int16_t out[BLK * 2]; speech_t sp; memset(&sp, 0, sizeof sp); sp.cur = -1;
+        int blocks = (30 * SR) / BLK;
+        struct timespec t0, t1; clock_gettime(CLOCK_MONOTONIC, &t0);
+        for (int b2 = 0; b2 < blocks; b2++) {
+            speech_block(&sp, (double)b2 * BLK / SR, (int16_t *)(g_mem + MOVE_AUDIO_IN_OFFSET), NULL);
+            api->render_block(fx, out, BLK);
+        }
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        double el = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
+        printf("      con EQ e riverbero: 30 s in %.3f s => %.2f%% di un core\n", el, 100.0 * el / 30.0);
+        CHECK(el / 30.0 < 0.12, "carico con 24 tasti + EQ + riverbero < 12%% di un core x86");
+        api->destroy_instance(fx);
+    }
+
     printf("\n%s (%d controlli falliti)\n", g_fail ? "ESITO: FALLITO" : "ESITO: TUTTO OK", g_fail);
     return g_fail ? 1 : 0;
 }

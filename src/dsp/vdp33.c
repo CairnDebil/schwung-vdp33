@@ -97,6 +97,8 @@ enum {
     P_LVL_ORG, P_ZN_ORG, P_ORG_8, P_ORG_4, P_ORG_2, P_ORG_1, P_ORG_TONE, P_ENS_ORG,
     P_STR_REG, P_REL_MODE, P_ATT_LEGATO, P_ENS_MODE, P_EXT_ENS,
     P_VIB_ORG, P_VIB_STR, P_OUT_TONE, P_TUNE_REF,
+    /* output effects: three-band equalizer and a small stereo reverb */
+    P_EQ_LOW, P_EQ_MID, P_EQ_HIGH, P_REV_MIX, P_REV_SIZE, P_REV_DAMP,
     P_COUNT
 };
 
@@ -178,6 +180,12 @@ static const pdef_t g_params[P_COUNT] = {
     [P_VIB_STR]   = PE("vib_str",          "Vibrato on Strings",  "VbStr", OPT_ONOFF, 2, 0),
     [P_OUT_TONE]  = PF("out_tone",         "Master Tone",         "MTone", 0.50f),
     [P_TUNE_REF]  = PE("tune_ref",         "Reference A",         "RefA",  OPT_REFA, 2, 0),
+    [P_EQ_LOW]    = PF("eq_low",           "EQ Low",              "EqLow", 0.50f),
+    [P_EQ_MID]    = PF("eq_mid",           "EQ Mid",              "EqMid", 0.50f),
+    [P_EQ_HIGH]   = PF("eq_high",          "EQ High",             "EqHi",  0.50f),
+    [P_REV_MIX]   = PF("rev_mix",          "Reverb Mix",          "RvMix", 0.0f),
+    [P_REV_SIZE]  = PF("rev_size",         "Reverb Size",         "RvSiz", 0.50f),
+    [P_REV_DAMP]  = PF("rev_damp",         "Reverb Damping",      "RvDmp", 0.50f),
 };
 
 /* ----------------------------------------------------------------- presets */
@@ -237,6 +245,13 @@ static const preset_t g_presets[] = {
     { "RS Orchestra",     { {P_LVL_STR, .85f}, {P_ZN_STR, ZN_ALL}, {P_STR_REG, SR_84}, {P_TONE, .20f},
                             {P_ATT_STR, .50f}, {P_REL, .50f}, {P_OUT_TONE, .30f}, {P_ENS_MODE, EM_NATURAL}, END } },
     { "RS Ext Ensemble",  { {P_EXT_ENS, .85f}, {P_MIC, .55f}, {P_ENS_MODE, EM_DYNAMIC}, END } },
+    /* ---- with the output effects ---- */
+    { "Hall Strings",     { {P_LVL_STR, .80f}, {P_ZN_STR, ZN_ALL}, {P_STR_REG, SR_84}, {P_ATT_STR, .45f},
+                            {P_REL, .55f}, {P_ENS_MODE, EM_NATURAL}, {P_REV_MIX, .45f}, {P_REV_SIZE, .75f},
+                            {P_REV_DAMP, .55f}, {P_EQ_LOW, .42f}, {P_EQ_HIGH, .58f}, END } },
+    { "Valley Choir",     { {P_LVL_VOI, .85f}, {P_HV_M8L, ON}, {P_HV_M4L, ON}, {P_HV_M8U, ON}, {P_HV_F4U, ON},
+                            {P_ATT_VOI, .40f}, {P_REL, .55f}, {P_ENS_VOI, ON}, {P_REV_MIX, .55f},
+                            {P_REV_SIZE, .85f}, {P_REV_DAMP, .45f}, {P_EQ_MID, .56f}, END } },
 };
 #define NUM_PRESETS ((int)(sizeof(g_presets) / sizeof(g_presets[0])))
 
@@ -297,6 +312,53 @@ typedef struct {
 
 typedef struct { int on, src, vel; } pend_t;
 
+/* ---- reverb: eight lowpass-feedback combs and four allpasses per channel (Schroeder / Freeverb layout) ---- */
+#define REV_COMBS 8
+#define REV_APS   4
+#define REV_COMB_MAX 2000
+#define REV_AP_MAX   700
+#define REV_SPREAD   23          /* right channel is longer by this many samples at 44.1 kHz */
+static const int k_rev_comb[REV_COMBS] = { 1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617 };
+static const int k_rev_ap[REV_APS] = { 556, 441, 341, 225 };
+typedef struct { float buf[REV_COMB_MAX]; int len, pos; float store; } comb_t;
+typedef struct { float buf[REV_AP_MAX]; int len, pos; } ap_t;
+
+/* ---- equalizer: RBJ biquads, low shelf 120 Hz, peak 1 kHz, high shelf 6 kHz, +-12 dB ---- */
+typedef struct { float b0, b1, b2, a1, a2; int on; } biq_t;
+#define EQ_RANGE_DB 12.0f
+static biq_t eq_design(int kind, float f0, float q, float gain_db, float sr)
+{
+    biq_t r = { 1, 0, 0, 0, 0, 0 };
+    if (fabsf(gain_db) < 0.05f) return r;               /* flat: section is skipped */
+    const float A = powf(10.0f, gain_db / 40.0f);
+    const float w = TWO_PI_F * f0 / sr, cw = cosf(w), sw = sinf(w);
+    float b0, b1, b2, a0, a1, a2;
+    if (kind == 1) {                                     /* peaking */
+        const float al = sw / (2.0f * q);
+        b0 = 1.0f + al * A; b1 = -2.0f * cw; b2 = 1.0f - al * A;
+        a0 = 1.0f + al / A; a1 = -2.0f * cw; a2 = 1.0f - al / A;
+    } else {
+        const float al = sw * 0.5f * 1.41421356f;        /* shelf slope S = 1 */
+        const float t = 2.0f * sqrtf(A) * al;
+        if (kind == 0) {                                 /* low shelf */
+            b0 = A * ((A + 1) - (A - 1) * cw + t); b1 = 2 * A * ((A - 1) - (A + 1) * cw); b2 = A * ((A + 1) - (A - 1) * cw - t);
+            a0 = (A + 1) + (A - 1) * cw + t;       a1 = -2 * ((A - 1) + (A + 1) * cw);    a2 = (A + 1) + (A - 1) * cw - t;
+        } else {                                         /* high shelf */
+            b0 = A * ((A + 1) + (A - 1) * cw + t); b1 = -2 * A * ((A - 1) + (A + 1) * cw); b2 = A * ((A + 1) + (A - 1) * cw - t);
+            a0 = (A + 1) - (A - 1) * cw + t;       a1 = 2 * ((A - 1) - (A + 1) * cw);      a2 = (A + 1) - (A - 1) * cw - t;
+        }
+    }
+    r.b0 = b0 / a0; r.b1 = b1 / a0; r.b2 = b2 / a0; r.a1 = a1 / a0; r.a2 = a2 / a0; r.on = 1;
+    return r;
+}
+static inline float biq_run(const biq_t *c, float *z, float x)
+{
+    const float y = c->b0 * x + z[0];
+    z[0] = c->b1 * x - c->a1 * y + z[1];
+    z[1] = c->b2 * x - c->a2 * y;
+    return y;
+}
+
 typedef struct {
     float sr, inv_sr;
     float p[P_COUNT];
@@ -337,6 +399,11 @@ typedef struct {
     int wp;
     float ph_slow, ph_fast;
     float tap_lp[4];
+    /* output effects */
+    float eq_z[3][2][2];       /* biquad states: section, channel, z1/z2 */
+    comb_t rc[2][REV_COMBS];
+    ap_t   ra[2][REV_APS];
+    int rev_idle;
 } vdp_t;
 
 static const host_api_v1_t *g_host = NULL;
@@ -359,7 +426,9 @@ static void apply_preset(vdp_t *v, int idx)
     for (int i = 0; i < P_COUNT; i++) {
         /* performance settings survive a preset change */
         if (i == P_OCT || i == P_BEND || i == P_VOLUME || i == P_TUNE || i == P_VELOCITY ||
-            i == P_TUNE_REF || i == P_OUT_TONE) continue;
+            i == P_TUNE_REF || i == P_OUT_TONE ||
+            i == P_EQ_LOW || i == P_EQ_MID || i == P_EQ_HIGH ||
+            i == P_REV_MIX || i == P_REV_SIZE || i == P_REV_DAMP) continue;
         v->p[i] = g_params[i].def;
     }
     for (int i = 0; g_presets[idx].v[i].idx >= 0; i++)
@@ -628,6 +697,20 @@ static void vdp_render(vdp_t *v, int16_t *out, int frames)
     const float mt_lo = exp2f(-mt), mt_hi = exp2f(mt);
     const float mt_a = 1.0f - expf(-TWO_PI_F * 1200.0f * inv_sr);
 
+    /* output effects */
+    biq_t eqc[3];
+    eqc[0] = eq_design(0, 120.0f,  0.7f, (P[P_EQ_LOW]  - 0.5f) * 2.0f * EQ_RANGE_DB, sr);
+    eqc[1] = eq_design(1, 1000.0f, 0.7f, (P[P_EQ_MID]  - 0.5f) * 2.0f * EQ_RANGE_DB, sr);
+    eqc[2] = eq_design(2, 6000.0f, 0.7f, (P[P_EQ_HIGH] - 0.5f) * 2.0f * EQ_RANGE_DB, sr);
+    const float rv_mix = P[P_REV_MIX];
+    const int rv_on = rv_mix > 0.001f;
+    const float rv_fb = 0.70f + 0.25f * P[P_REV_SIZE];          /* comb feedback 0.70 to 0.95: RT60 about 0.6 s to 4 s */
+    const float rv_d1 = 0.40f * P[P_REV_DAMP], rv_d2 = 1.0f - rv_d1;
+    const float rv_wet = 3.0f * rv_mix, rv_dry = 1.0f - 0.35f * rv_mix;
+    if (!rv_on && !v->rev_idle) {                                /* mix pulled to zero: clear the tail once */
+        memset(v->rc, 0, sizeof v->rc); memset(v->ra, 0, sizeof v->ra); v->rev_idle = 1;
+    } else if (rv_on) v->rev_idle = 0;
+
     const int ens_v = P[P_ENS_VOI] > 0.5f, ens_c = P[P_ENS_VOC] > 0.5f, ens_o = P[P_ENS_ORG] > 0.5f;
     /* Ensemble Mode: Standard = VP-330 model; I = dynamic, richer; II = natural, gentler (estimates) */
     float em_depth = 1.0f, em_rate = 1.0f, em_wet = 1.10f;
@@ -857,6 +940,33 @@ static void vdp_render(vdp_t *v, int16_t *out, int frames)
         v->ot_lo[1] += mt_a * (R - v->ot_lo[1]);
         L = mt_lo * v->ot_lo[0] + mt_hi * (L - v->ot_lo[0]);
         R = mt_lo * v->ot_lo[1] + mt_hi * (R - v->ot_lo[1]);
+        for (int e = 0; e < 3; e++) if (eqc[e].on) {          /* equalizer */
+            L = biq_run(&eqc[e], v->eq_z[e][0], L);
+            R = biq_run(&eqc[e], v->eq_z[e][1], R);
+        }
+        if (rv_on) {                                           /* reverb */
+            const float in = (L + R) * 0.015f;
+            float wl = 0.0f, wr = 0.0f;
+            for (int c = 0; c < REV_COMBS; c++) {
+                comb_t *a = &v->rc[0][c], *b = &v->rc[1][c];
+                float ya = a->buf[a->pos], yb = b->buf[b->pos];
+                a->store = ya * rv_d2 + a->store * rv_d1;  b->store = yb * rv_d2 + b->store * rv_d1;
+                a->buf[a->pos] = in + a->store * rv_fb;    b->buf[b->pos] = in + b->store * rv_fb;
+                if (++a->pos >= a->len) a->pos = 0;
+                if (++b->pos >= b->len) b->pos = 0;
+                wl += ya; wr += yb;
+            }
+            for (int q = 0; q < REV_APS; q++) {
+                ap_t *a = &v->ra[0][q], *b = &v->ra[1][q];
+                float ba = a->buf[a->pos], bb = b->buf[b->pos];
+                a->buf[a->pos] = wl + ba * 0.5f;           b->buf[b->pos] = wr + bb * 0.5f;
+                wl = ba - wl;                              wr = bb - wr;
+                if (++a->pos >= a->len) a->pos = 0;
+                if (++b->pos >= b->len) b->pos = 0;
+            }
+            L = L * rv_dry + rv_wet * (0.7f * wl + 0.3f * wr);
+            R = R * rv_dry + rv_wet * (0.7f * wr + 0.3f * wl);
+        }
         L = tanhf(L * master);
         R = tanhf(R * master);
         out[2 * n]     = (int16_t)lrintf(L * 32767.0f);
@@ -875,6 +985,8 @@ static void vdp_render(vdp_t *v, int16_t *out, int frames)
     v->org_lp1 = flush_f(v->org_lp1);   v->org_lp2 = flush_f(v->org_lp2);
     v->ot_lo[0] = flush_f(v->ot_lo[0]); v->ot_lo[1] = flush_f(v->ot_lo[1]);
     v->nlp = flush_f(v->nlp);
+    for (int e = 0; e < 3; e++) for (int c = 0; c < 2; c++) for (int z = 0; z < 2; z++) v->eq_z[e][c][z] = flush_f(v->eq_z[e][c][z]);
+    for (int c = 0; c < 2; c++) for (int i = 0; i < REV_COMBS; i++) v->rc[c][i].store = flush_f(v->rc[c][i].store);
     v->dc_x1 = flush_f(v->dc_x1);       v->dc_y1 = flush_f(v->dc_y1);
     v->ps_cur = flush_f(v->ps_cur);
     v->pedal_gate = flush_f(v->pedal_gate);
@@ -909,6 +1021,18 @@ static void vdp_init_state(vdp_t *v, float sr)
         svf_set(&v->form_m[i], k_form_male[i], k_form_q[i], sr);
         svf_set(&v->form_f[i], k_form_female[i], k_form_q[i], sr);
     }
+    for (int c = 0; c < 2; c++) {
+        const float sc = sr / 44100.0f, sp = c ? (float)REV_SPREAD : 0.0f;
+        for (int i = 0; i < REV_COMBS; i++) {
+            int n = (int)lrintf(((float)k_rev_comb[i] + sp) * sc);
+            v->rc[c][i].len = n < 8 ? 8 : (n > REV_COMB_MAX ? REV_COMB_MAX : n);
+        }
+        for (int i = 0; i < REV_APS; i++) {
+            int n = (int)lrintf(((float)k_rev_ap[i] + sp) * sc);
+            v->ra[c][i].len = n < 8 ? 8 : (n > REV_AP_MAX ? REV_AP_MAX : n);
+        }
+    }
+    v->rev_idle = 1;
     for (int i = 0; i < P_COUNT; i++) v->p[i] = g_params[i].def;
     apply_preset(v, 0);
 }
@@ -1017,7 +1141,8 @@ static int get_ui_hierarchy(char *buf, int buf_len)
             "\"params\":[{\"level\":\"balance\",\"label\":\"Balance / Tone\"},{\"level\":\"keys\",\"label\":\"Keyboard\"},"
             "{\"level\":\"organ\",\"label\":\"Organ (RS-09)\"},{\"level\":\"strings\",\"label\":\"Strings (RS-09)\"},"
             "{\"level\":\"envelope\",\"label\":\"Envelope\"},{\"level\":\"ensemble\",\"label\":\"Ensemble\"},"
-            "{\"level\":\"vibrato\",\"label\":\"Vibrato\"},{\"level\":\"pitch\",\"label\":\"Pitch Shift\"}]},"
+            "{\"level\":\"vibrato\",\"label\":\"Vibrato\"},{\"level\":\"pitch\",\"label\":\"Pitch Shift\"},"
+            "{\"level\":\"fx\",\"label\":\"EQ and Reverb\"}]},"
         "\"balance\":{\"children\":null,"
             "\"knobs\":[\"volume\",\"lvl_str\",\"lvl_voice\",\"lvl_org\",\"direct_mic\",\"mic_gain\",\"voc_tone\",\"tone\"],"
             "\"params\":[\"volume\",\"lvl_str\",\"lvl_voice\",\"lvl_org\",\"direct_mic\",\"ext_ens\",\"mic_gain\",\"voc_tone\",\"tone\",\"out_tone\",\"sibilance\"]},"
@@ -1039,6 +1164,9 @@ static int get_ui_hierarchy(char *buf, int buf_len)
         "\"vibrato\":{\"children\":null,"
             "\"knobs\":[\"vib_rate\",\"vib_delay\",\"vib_depth\",\"vib_org\",\"vib_str\"],"
             "\"params\":[\"vib_rate\",\"vib_delay\",\"vib_depth\",\"vib_org\",\"vib_str\"]},"
+        "\"fx\":{\"children\":null,"
+            "\"knobs\":[\"eq_low\",\"eq_mid\",\"eq_high\",\"rev_mix\",\"rev_size\",\"rev_damp\",\"out_tone\",\"volume\"],"
+            "\"params\":[\"eq_low\",\"eq_mid\",\"eq_high\",\"rev_mix\",\"rev_size\",\"rev_damp\",\"out_tone\",\"volume\"]},"
         "\"pitch\":{\"children\":null,"
             "\"knobs\":[\"ps_mode\",\"ps_set\",\"ps_time\",\"ps_fader\",\"tune\",\"tune_ref\",\"voc_pedal\",\"octave_transpose\"],"
             "\"params\":[\"ps_mode\",\"ps_set\",\"ps_time\",\"ps_fader\",\"tune\",\"tune_ref\",\"bend_range\",\"octave_transpose\",\"voc_pedal\"]}"

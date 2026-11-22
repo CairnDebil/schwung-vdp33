@@ -36,38 +36,56 @@ console.log('1. Demo mode');
   const { page, ctx, errs } = await open('src/web/web_ui.html');
   ok(await page.evaluate(() => window.vdpEditor.mode) === 'demo', 'no schwungRemote: demo mode');
   const n = await page.evaluate(() => Object.keys(window.vdpEditor.D).length);
-  ok(n === 51, '51 parameters in the page (' + n + ')');
-  ok(await page.locator('#preset option').count() === 24, '24 presets in the list');
+  ok(n === 57, '57 parameters in the page (' + n + ')');
+  ok(await page.locator('#preset option').count() === 26, '26 presets in the list');
   ok(await page.locator('#where').getAttribute('data-state') === 'demo', 'demo badge');
-  ok(await page.locator('.knob,.fader,.tabl button,.seg,.step').count() >= 40, 'controls rendered');
+  ok(await page.locator('.slot,.knob,.tab,.lamp,.stepper').count() >= 60, 'controls rendered');
   ok(errs.length === 0, 'no JavaScript errors ' + JSON.stringify(errs));
   // interaction: tablet, segmented, stepper, fader keyboard
-  await page.locator('#p-vocoder .tabl button').click();
+  ok(await page.evaluate(() => window.vdpEditor.P.lvl_str) === 0.85, 'demo starts on preset 0 (Strings)');
+  await page.locator('[data-key="ens_voc"] button').click();
   ok(await page.evaluate(() => window.vdpEditor.P.ens_voc) === 1, 'tablet toggles ens_voc');
-  await page.locator('#p-organ .seg').nth(1).locator('button', { hasText: 'II Bright' }).click();
-  ok(await page.evaluate(() => window.vdpEditor.P.org_tone) === 1, 'segmented: organ tone II');
-  await page.locator('#p-keys .step button').nth(1).click();
+  await page.locator('[data-key="org_tone"] .lamp', { hasText: 'II Bright' }).click();
+  ok(await page.evaluate(() => window.vdpEditor.P.org_tone) === 1, 'lamp button: organ tone II');
+  await page.locator('[data-key="split"] button').nth(1).click();
   ok(await page.evaluate(() => window.vdpEditor.P.split) === 61, 'stepper raises split to 61');
-  const f = page.locator('#p-balance .fader').first();
-  await f.focus(); for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowUp');
-  ok(Math.abs(await page.evaluate(() => window.vdpEditor.P.lvl_str) - 0.05) < 1e-6, 'fader arrow keys: +5%');
+  const f = page.locator('[data-key="lvl_str"] .slot');
   await f.dblclick();
   ok(await page.evaluate(() => window.vdpEditor.P.lvl_str) === 0, 'double-click resets to default');
-  const kn = page.locator('#p-vibrato .knob').first();
+  await f.focus(); for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowUp');
+  ok(Math.abs(await page.evaluate(() => window.vdpEditor.P.lvl_str) - 0.05) < 1e-6, 'slider arrow keys: +5%');
+  // dragging the cap with the mouse
+  await f.scrollIntoViewIfNeeded();
+  const sb = await f.boundingBox();
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height - 12); await page.mouse.down();
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2, { steps: 6 }); await page.mouse.up();
+  const dv = await page.evaluate(() => window.vdpEditor.P.lvl_str);
+  ok(dv > 0.35 && dv < 0.65, 'dragging a slider to its middle gives about 50% (' + dv.toFixed(2) + ')');
+  // the two zone tablets
+  await page.locator('[data-key="zone_org"] [data-bit="2"]').click();
+  ok(await page.evaluate(() => window.vdpEditor.P.zone_org) === 2, 'Upper tablet sets organ zone to Upper');
+  await page.waitForTimeout(120);
+  ok((await page.locator('#zoneBar div').nth(1).textContent()).includes('Organ'), 'zone bar lists Organ on the upper half');
+  const sx0 = await page.locator('#splitLine').evaluate((e) => e.style.left);
+  await page.locator('[data-key="split"] button').nth(0).click(); await page.locator('[data-key="split"] button').nth(0).click(); await page.locator('[data-key="split"] button').nth(0).click();
+  ok(await page.locator('#splitLine').evaluate((e) => e.style.left) !== sx0, 'split line moves with Split Point');
+  ok(await page.locator('.whites > [data-note]').count() === 44, 'keyboard has 44 keys');
+  ok((await page.locator('#lcdMsg').textContent()).length > 0, 'display shows a message');
+  const kn = page.locator('[data-key="tune"] .knob');
   await kn.scrollIntoViewIfNeeded();
   const bb = await kn.boundingBox();
   await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.down();
   await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2 - 40, { steps: 5 }); await page.mouse.up();
-  ok(await page.evaluate(() => window.vdpEditor.P.vib_rate) > 0.5, 'dragging a knob up raises it');
+  ok(await page.evaluate(() => window.vdpEditor.P.tune) > 0.5, 'dragging a knob up raises it');
   await page.locator('#pNext').click();
   ok(await page.evaluate(() => window.vdpEditor.preset) === 1, 'next preset');
   await page.locator('#pPrev').click(); await page.locator('#pPrev').click();
-  ok(await page.evaluate(() => window.vdpEditor.preset) === 23, 'previous wraps to 23');
+  ok(await page.evaluate(() => window.vdpEditor.preset) === 25, 'previous wraps to 25');
   // envelope picture follows the mode
-  await page.locator('#p-envelope .seg button', { hasText: 'II Hold' }).click();
+  await page.locator('[data-key="rel_mode"] .lamp', { hasText: 'II Hold' }).click();
   await page.waitForTimeout(150);
   ok((await page.locator('#envNote').textContent()).startsWith('II Hold'), 'envelope note follows Release mode');
-  if (SHOTS) { fs.mkdirSync(path.join(ROOT, 'docs/screens'), { recursive: true }); await page.goto(pathToFileURL(path.join(ROOT, 'src/web/web_ui.html')).href); await page.waitForTimeout(500); await page.screenshot({ path: path.join(ROOT, 'docs/screens/editor.png'), fullPage: true }); }
+  if (SHOTS) { fs.mkdirSync(path.join(ROOT, 'docs/screens'), { recursive: true }); await page.goto(pathToFileURL(path.join(ROOT, 'src/web/web_ui.html')).href); await page.waitForTimeout(500); await page.setViewportSize({ width: 1500, height: 1200 }); await page.waitForTimeout(300); await page.screenshot({ path: path.join(ROOT, 'docs/screens/editor.png'), fullPage: false }); }
   await ctx.close();
 }
 
@@ -89,9 +107,34 @@ console.log('2. Preset parity with the C engine');
       }, s);
       if (r.length) bad.push('#' + s.preset + ': ' + r.slice(0, 3).join('; '));
     }
-    ok(states.length === 24, states.length + ' preset states from the engine');
+    ok(states.length === 26, states.length + ' preset states from the engine');
     ok(bad.length === 0, 'editor applyPreset equals apply_preset() for every preset ' + bad.slice(0, 3).join(' | '));
   }
+  await ctx.close();
+}
+
+console.log('2b. Equalizer and reverb');
+{
+  const { page, ctx, errs } = await open('src/web/web_ui.html');
+  for (const k of ['eq_low', 'eq_mid', 'eq_high', 'rev_mix', 'rev_size', 'rev_damp'])
+    ok(await page.locator('[data-key=' + k + '] .slot').count() === 1, k + ' has a slider');
+  ok(await page.locator('#p-eq').count() === 1 && await page.locator('#p-reverb').count() === 1, 'Equalizer and Reverb plates exist');
+  await page.evaluate(() => { const E = window.vdpEditor; E.applyPreset(0); E.send('rev_mix', 0); E.send('eq_low', 1); });
+  await page.waitForTimeout(150);
+  let note = await page.locator('#fxNote').textContent();
+  ok(/low shelf at 120 Hz \+12\.0 dB/.test(note) && /Reverb is off/.test(note), 'the curve card follows the sliders: ' + note.slice(0, 70));
+  await page.evaluate(() => { const E = window.vdpEditor; E.send('rev_mix', 0.5); E.send('rev_size', 1); });
+  await page.waitForTimeout(150);
+  note = await page.locator('#fxNote').textContent();
+  ok(/mix 50%/.test(note) && /about 4\.\d s/.test(note), 'reverb note shows mix and decay time: ' + note.slice(-90));
+  const px = await page.evaluate(() => { const c = document.getElementById('fxView'), g = c.getContext('2d'); const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; });
+  ok(px > 5000, 'the fx canvas is drawn (' + px + ' px)');
+  await page.evaluate(() => window.vdpEditor.choosePreset(24));
+  await page.waitForTimeout(100);
+  ok(await page.evaluate(() => window.vdpEditor.P.rev_mix) > 0.3, 'Hall Strings brings its own reverb');
+  const hall = await page.evaluate(() => { const E = window.vdpEditor; E.send('eq_low', 0.9); E.send('rev_mix', 0.1); E.choosePreset(3); return [E.P.eq_low, E.P.rev_mix]; });
+  ok(Math.abs(hall[0] - 0.9) < 1e-6 && Math.abs(hall[1] - 0.1) < 1e-6, 'EQ and reverb survive a preset change, as in the engine');
+  ok(errs.length === 0, 'no page errors ' + errs.join(','));
   await ctx.close();
 }
 
@@ -106,8 +149,8 @@ console.log('3. Chain mode (mocked Schwung remote)');
   ok(st.v === 0.5 && st.o === 0.7 && st.p === 19 && st.z === 3, 'incoming parameters applied, other components ignored');
   ok(await page.locator('#where').getAttribute('data-state') === 'live', 'badge turns live');
   ok(await page.locator('#preset').inputValue() === '19', 'preset select follows the Move');
-  await page.locator('#p-vocoder .tabl button').click();
-  await page.locator('#p-organ .seg').nth(1).locator('button', { hasText: 'II Bright' }).click();
+  await page.locator('[data-key="ens_voc"] button').click();
+  await page.locator('[data-key="org_tone"] .lamp', { hasText: 'II Bright' }).click();
   await page.locator('#pNext').click();
   await page.waitForTimeout(100);
   const sent = await page.evaluate(() => window.__sent);
@@ -136,6 +179,16 @@ console.log('4. Chain mode: resubscribe when silent');
   await ctx.close();
 }
 
+console.log('4b. Fits the window');
+for (const w of [1024, 1280, 1600]) {
+  const { page, ctx } = await open('src/web/web_ui.html', { w, h: 900 });
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  ok(over <= 2, 'no horizontal overflow at ' + w + ' px (' + over + ')');
+  const bands = await page.evaluate(() => [...document.querySelectorAll('.band')].map((b) => new Set([...b.children].map((c) => Math.round(c.getBoundingClientRect().top))).size));
+  ok(bands.every((n) => n === 1), 'each panel row stays on one line at ' + w + ' px ' + JSON.stringify(bands));
+  await ctx.close();
+}
+
 console.log('5. Small screen');
 {
   const { page, ctx, errs } = await open('src/web/web_ui.html', { w: 390, h: 800 });
@@ -148,14 +201,15 @@ console.log('5. Small screen');
 console.log('6. Manual and demo copy');
 {
   const { page, ctx, errs } = await open('docs/index.html');
-  ok(await page.locator('.presets li').count() === 24, 'manual lists 24 presets');
-  ok(await page.locator('#reference tbody tr:not(.tr-grp)').count() >= 51, 'reference table has every parameter');
-  ok(await page.locator('#reference tbody tr').count() >= 51, 'reference rows present');
+  ok(await page.locator('.presets li').count() === 26, 'manual lists 26 presets');
+  ok(await page.locator('#reference tbody tr:not(.tr-grp)').count() >= 57, 'reference table has every parameter');
+  ok(await page.locator('#reference tbody tr').count() >= 57, 'reference rows present');
   const links = await page.$$eval('a[href^="#"]', (as) => as.map((a) => a.getAttribute('href')));
   let miss = []; for (const l of links) if (!(await page.locator(l).count())) miss.push(l);
   ok(miss.length === 0, 'anchor links resolve ' + miss);
   ok(errs.length === 0, 'no JavaScript errors ' + JSON.stringify(errs));
   if (SHOTS) await page.screenshot({ path: path.join(ROOT, 'docs/screens/manual.png'), fullPage: false });
+  ok(await page.locator('.print img').evaluate((i) => i.complete && i.naturalWidth > 1000), 'manual shows the instrument picture');
   await ctx.close();
   const a = fs.readFileSync(path.join(ROOT, 'src/web/web_ui.html'), 'utf8'), b = fs.readFileSync(path.join(ROOT, 'docs/editor.html'), 'utf8');
   ok(a === b, 'docs/editor.html is identical to src/web/web_ui.html');

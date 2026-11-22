@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "download_url": "https://github.com/CairnDebil/schwung-vdp33/releases/download/v0.3.0/vdp33-module.tar.gz",
   "name": "VDP33",
   "description": "Vocoder, strings, human-voice and organ ensemble synth (VP-330 / VC340 with the RS-09 sections) and a 10-band vocoder",

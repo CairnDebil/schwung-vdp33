@@ -10,7 +10,24 @@ Repository: <https://github.com/CairnDebil/schwung-vdp33>.
 Everything is written from scratch. There is no code, sample or ROM from any
 original instrument. All DSP is in one C file, `src/dsp/vdp33.c`.
 
-## What is new in 0.3: the Roland RS-09
+## What is new in 0.4: a new look, an equalizer and a reverb
+
+* **Equalizer** (`EQ Low`, `EQ Mid`, `EQ High`): a low shelf at 120 Hz, a broad
+  bell at 1 kHz and a high shelf at 6 kHz, +-12 dB each, flat in the middle.
+  A flat band is skipped, so a flat equalizer is bit-for-bit transparent.
+* **Reverb** (`Reverb Mix`, `Reverb Size`, `Reverb Damping`): a small stereo
+  Schroeder/Freeverb-style room (eight combs and four allpasses per side, the
+  right side slightly longer). Mix 0 is off and clears the tail. Size gives a
+  60 dB decay of about 0.6 s to 4 s; Damping darkens the tail.
+* Both sit after Master Tone and before the output limiter, and like Master
+  Tone and Volume they **survive a preset change**. The Roland originals have
+  neither, so the corner frequencies and scalings are simple choices, not
+  measurements. New on-screen page *EQ and Reverb*, and two presets that use
+  them: *Hall Strings* and *Valley Choir* (26 in all).
+* **A new look for the editor and the manual**, drawn from scratch: see *Look*
+  below.
+
+## What came in 0.3: the Roland RS-09
 
 Version 0.3 adds what the **Roland RS-09** has beyond the VP-330, and corrects
 three points against the VP-330 owner's manual.
@@ -40,14 +57,30 @@ parameters at neutral values (Release Mode defaults to Free).
 
 * **Editor:** `src/web/web_ui.html` is shipped with the module as `web_ui.html`.
   With VDP33 in a slot, open Schwung Manager (`http://move.local:7700`) ->
-  *Remote UI*. Every parameter is there, with the preset list and an envelope
-  picture for the three Release Modes. Changes go both ways.
+  *Remote UI*. The page is the instrument itself, drawn as a piece of hardware
+  inspired by the VP-330 and the RS-09: routed park-sign end cheeks, a
+  granite-grey panel with webbing strips, gear-tag section headers, anodised
+  slider caps and knobs, tablet switches with LEDs, an amber preset display in
+  a hazard-striped frame, and a 44-key keyboard on which the split point and
+  the sections assigned to the lower and upper halves are drawn. Every
+  parameter is there, plus one scope that draws the three Release Modes and
+  another that draws the equalizer curve and the reverb decay. Changes go
+  both ways.
 * **Demo without a Move:** `docs/editor.html` is the same page. It has a rough
   on-screen keyboard that approximates Organ and Strings in the browser (Human
   Voice and Vocoder are silent there).
-* **Manual:** `docs/index.html`. Publish `docs/` with GitHub Pages
+* **Manual:** `docs/index.html`, with a picture of the instrument (`docs/screens/instrument.png`). Publish `docs/` with GitHub Pages
   (*Settings -> Pages -> Deploy from branch -> main, /docs*) to get
   `https://cairndebil.github.io/schwung-vdp33/` and `.../editor.html`.
+* **Look:** a loud 1970s exploitation-film poster (one flat signal yellow,
+  black block lettering, halftone, a starburst) crossed with a Californian
+  climbing-valley trail guide (contour lines, routed signs, webbing, anodised
+  gear, decorative route grades such as 5.10a) and the banded-sky outdoor
+  label. It is an homage in spirit only: the lettering, starburst, ridge
+  pennant and contour art are all drawn for this module, and no film title,
+  still, logo or brand mark is reproduced. The instrument carries no Roland
+  artwork. Colours of the section strips on the panel are the colours of the
+  headings in the manual.
 * The parameter table, the preset list and the version in both pages are
   generated from the C source by `python3 scripts/gen_web.py` (run by
   `scripts/build.sh`; `--check` fails if they are out of date).
@@ -79,7 +112,8 @@ Signal flow:
 
  Strings   -> register, Tone low-pass -------------------------+ (Ensemble always on)
  Organ     -> feet, Tone I / II --------> Ensemble (switch) ---+
- Male/Female formant choirs -----------> Ensemble (switch) ----+--> Master Tone -> out
+ Male/Female formant choirs -----------> Ensemble (switch) ----+--> Master Tone
+                                                                     -> EQ (3 bands) -> Reverb -> out
  Vocoder carrier x 10 bands of mic/line-in -> Tone -> Ensemble (switch)
  Ext In -> Ensemble (level) ; Direct Mic ----------------------+
 ```
@@ -135,10 +169,10 @@ it had already loaded.
 > "Feedback Risk" notice. Plug in headphones or a cable and it re-enables on its
 > own; `Mute` + jog-click un-bypasses it if you really want it live.
 
-The screen has nine pages (Main, Balance, Keyboard, Organ, Strings, Envelope,
-Ensemble, Vibrato, Pitch) of up to eight knobs. 24 factory presets cover strings,
-choirs, vocoder, split layouts, pitch dives and the RS-09 organ and string
-registers. MP3 renders of all of them are in `demo/`.
+The screen has ten pages (Main, Balance, Keyboard, Organ, Strings, Envelope,
+Ensemble, Vibrato, Pitch, EQ and Reverb) of up to eight knobs. 26 factory presets cover strings,
+choirs, vocoder, split layouts, pitch dives, the RS-09 organ and string
+registers, and two with reverb. MP3 renders of all of them are in `demo/`.
 
 ## What the manuals confirm, and what is an estimate
 
@@ -191,7 +225,7 @@ synthetic vowel sequence as the vocoder modulator, and checks pitch accuracy,
 levels, vocoder tracking, Vocoder Hold and Gate, Direct Mic, zones, the four
 Human Voice switches, formants, vibrato, Pitch Shift in all modes and sections,
 Tune and bend, velocity, organ feet and tone, strings registers, release modes,
-legato attack, the release pedal, ensemble modes, Ext In, master tone, state
+legato attack, the release pedal, ensemble modes, Ext In, master tone, the equalizer, the reverb, state
 round-trip and compatibility with 0.2 states, JSON, and CPU load (about 7 % of
 one desktop core for 24 keys with everything on). The browser test drives the
 editor in demo mode and with a mocked Schwung remote, and checks that its

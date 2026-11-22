@@ -33,11 +33,13 @@ GROUPS = [
     ('Vibrato', ['vib_rate', 'vib_delay', 'vib_depth']),
     ('Pitch shift and tuning', ['ps_mode', 'ps_set', 'ps_time', 'ps_fader', 'tune', 'tune_ref', 'bend_range',
                                 'octave_transpose']),
+    ('Equalizer and reverb', ['eq_low', 'eq_mid', 'eq_high', 'rev_mix', 'rev_size', 'rev_damp']),
     ('Keyboard and pedals', ['split', 'velocity', 'voc_pedal']),
 ]
 
 # what a preset keeps from the player when it is loaded (see apply_preset in vdp33.c)
-KEEP = ['octave_transpose', 'bend_range', 'volume', 'tune', 'velocity', 'tune_ref', 'out_tone']
+KEEP = ['octave_transpose', 'bend_range', 'volume', 'tune', 'velocity', 'tune_ref', 'out_tone',
+        'eq_low', 'eq_mid', 'eq_high', 'rev_mix', 'rev_size', 'rev_damp']
 
 
 def num(s):
