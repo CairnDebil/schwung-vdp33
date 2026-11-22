@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VDP33 manual: vocoder, strings, voices and organ for Schwung</title>
+<meta name="description" content="Manual for VDP33, a Schwung sound generator for Ableton Move: paraphonic strings, human voice, organ and a ten-band vocoder.">
+<meta name="theme-color" content="#0b0420">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* A manual printed on a light-show poster: black-violet void, projected colour behind it,
+   one rainbow (the ten vocoder bands), gold for anything you can switch on. */
+:root {
+  --void: #0b0420; --panel: rgba(21, 10, 52, .74); --ink: #f6ecff; --ink-2: #cbbbea; --ink-3: #9482bd;
+  --hair: rgba(246, 236, 255, .18); --gold: #ffd84a; --mag: #ff2e93; --cyan: #26e8d8;
+  --spec: linear-gradient(90deg, #ff2e93, #ff8f1f 22%, #ffe14a 40%, #7dff6a 56%, #26e8d8 72%, #4d7bff 86%, #a24dff);
+  --display: "Shrikhand", "Cooper Black", "Bookman Old Style", Georgia, serif;
+  --label: "Space Grotesk", "Avenir Next", "Century Gothic", system-ui, sans-serif;
+  --mono: "Space Mono", "Courier New", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+body { margin: 0; background: var(--void); color: var(--ink); font: 400 17px/1.65 var(--label); -webkit-font-smoothing: antialiased; }
+#aura { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; filter: blur(40px) saturate(1.3); opacity: .8; }
+.veil { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 0%, transparent 25%, rgba(11, 4, 32, .85) 100%); }
+header, nav, main, footer { position: relative; z-index: 1; }
+a { color: var(--gold); text-underline-offset: 3px; }
+a:hover { color: #fff; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 3px; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 0 22px; }
+
+nav { position: sticky; top: 0; z-index: 10; background: rgba(11, 4, 32, .82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--hair); }
+nav .wrap { display: flex; gap: 4px 18px; flex-wrap: wrap; align-items: center; padding-top: 10px; padding-bottom: 10px; max-width: 1100px; }
+nav b { font: 400 20px/1 var(--display); background: var(--spec); -webkit-background-clip: text; background-clip: text; color: transparent; margin-right: auto; }
+nav a { font: 700 11px/1 var(--label); letter-spacing: .18em; text-transform: uppercase; color: var(--ink-2); text-decoration: none; padding: 6px 2px; }
+nav a:hover { color: var(--gold); }
+
+/* hero */
+.hero { padding: 54px 0 20px; text-align: center; }
+.hero canvas { width: 220px; height: 220px; display: block; margin: 0 auto 6px; }
+h1 { margin: 0; font: 400 clamp(72px, 16vw, 150px)/.88 var(--display); background: var(--spec); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 28px rgba(255, 46, 147, .5)); }
+.kick { margin: 14px 0 0; font: 700 12px/1.4 var(--label); letter-spacing: .34em; text-transform: uppercase; color: var(--ink-2); }
+.lede { max-width: 58ch; margin: 22px auto 0; font-size: 20px; line-height: 1.55; color: var(--ink); }
+.cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 28px 0 8px; }
+.btn { display: inline-block; font: 700 12px/1 var(--label); letter-spacing: .2em; text-transform: uppercase; text-decoration: none; padding: 14px 20px; border-radius: 26px; border: 1.5px solid rgba(246, 236, 255, .5); color: var(--ink); background: var(--panel); }
+.btn:hover { border-color: var(--gold); color: var(--gold); }
+.btn.go { background: var(--gold); border-color: var(--gold); color: #1b1040; }
+.btn.go:hover { background: #fff; border-color: #fff; color: #1b1040; }
+.meta { margin-top: 14px; font: 400 12px/1.5 var(--mono); color: var(--ink-3); }
+
+section { padding: 38px 0 6px; }
+h2 { margin: 0 0 14px; font: 400 clamp(32px, 5vw, 44px)/1.05 var(--display); }
+h2 small { display: block; margin-bottom: 8px; font: 700 11px/1 var(--label); letter-spacing: .3em; text-transform: uppercase; color: var(--ink-3); }
+h3 { margin: 28px 0 6px; font: 700 13px/1.2 var(--label); letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
+p { margin: 0 0 14px; }
+ul, ol { padding-left: 1.2em; margin: 0 0 14px; }
+li { margin: 4px 0; }
+code, kbd { font: 400 .88em/1 var(--mono); background: rgba(246, 236, 255, .1); padding: 2px 6px; border-radius: 5px; color: #fff; }
+pre { background: rgba(5, 1, 18, .7); border: 1px solid var(--hair); border-radius: 12px; padding: 14px 16px; overflow-x: auto; font: 400 13px/1.55 var(--mono); color: var(--ink-2); }
+pre code { background: none; padding: 0; font-size: inherit; }
+.card { background: var(--panel); border: 1px solid var(--hair); border-radius: 18px; padding: 18px 20px; margin: 16px 0; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.card > :last-child { margin-bottom: 0; }
+.note { border-left: 3px solid var(--mag); padding: 4px 0 4px 16px; margin: 18px 0; color: var(--ink-2); }
+.note b { color: var(--ink); }
+.rule { height: 2px; border: 0; background: var(--spec); opacity: .7; margin: 42px 0 0; border-radius: 2px; }
+.tw { overflow-x: auto; margin: 12px 0 18px; border: 1px solid var(--hair); border-radius: 14px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.45; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+th { font: 700 10.5px/1.2 var(--label); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+.tr-grp td { font: 400 20px/1.1 var(--display); color: var(--ink); padding-top: 18px; background: rgba(246, 236, 255, .04); }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 700px) { .two { grid-template-columns: 1fr; } body { font-size: 16px; } }
+.tag { display: inline-block; font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--hair); color: var(--ink-2); vertical-align: middle; }
+.tag.rs { border-color: var(--gold); color: var(--gold); }
+.tag.vp { border-color: var(--cyan); color: var(--cyan); }
+.tag.est { border-color: var(--mag); color: var(--mag); }
+
+/* presets */
+.presets { list-style: none; padding: 0; display: grid; gap: 8px; }
+.presets li { display: grid; grid-template-columns: 38px 190px 1fr; gap: 4px 14px; align-items: baseline; padding: 9px 14px; border: 1px solid var(--hair); border-radius: 12px; background: var(--panel); margin: 0; }
+.presets b { font: 700 13px/1 var(--mono); color: var(--gold); }
+.presets span { font: 400 19px/1.1 var(--display); }
+.presets i { font: 400 12.5px/1.45 var(--label); font-style: normal; color: var(--ink-3); }
+@media (max-width: 700px) { .presets li { grid-template-columns: 34px 1fr; } .presets i { grid-column: 2; } }
+
+footer { padding: 50px 0 70px; }
+footer p { font-size: 14px; color: var(--ink-3); }
+footer a { color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media print { #aura, .veil, nav { display: none; } body { background: #fff; color: #111; } }
+</style>
+</head>
+<body>
+<canvas id="aura" aria-hidden="true"></canvas>
+<div class="veil" aria-hidden="true"></div>
+
+<nav aria-label="Manual">
+  <div class="wrap">
+    <b>VDP33</b>
+    <a href="#install">Install</a>
+    <a href="#play">Play</a>
+    <a href="#panel">Panel</a>
+    <a href="#rs09">RS-09</a>
+    <a href="#editor">Editor</a>
+    <a href="#midi">MIDI</a>
+    <a href="#presets">Presets</a>
+    <a href="#reference">Reference</a>
+    <a href="#honest">Estimates</a>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap hero">
+    <canvas id="wheel" width="440" height="440" aria-hidden="true"></canvas>
+    <h1>VDP33</h1>
+    <p class="kick">Vocoder · Strings · Voices · Organ</p>
+    <p class="lede">A sound generator for <a href="https://github.com/charlesvestal/schwung">Schwung</a> on Ableton Move. Ten bands of vocoder, paraphonic strings, a human choir and a square-wave organ, all through a bucket-brigade style ensemble. It follows the Roland VP-330 and gains the organ and string registers of the RS-09.</p>
+    <div class="cta">
+      <a class="btn go" href="editor.html">Open the editor</a>
+      <a class="btn" href="https://github.com/CairnDebil/schwung-vdp33">Source on GitHub</a>
+      <a class="btn" href="#install">Install</a>
+    </div>
+    <p class="meta">version <!-- ver:begin -->0.3.0<!-- ver:end --> · <!-- n:begin -->51<!-- n:end --> parameters · <!-- np:begin -->24<!-- np:end --> presets · MIT licence</p>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+<section id="what">
+  <h2><small>What it is</small>A choir and an orchestra on one keyboard</h2>
+  <p>VDP33 plays three sections from the same divide-down oscillators: <b>Strings</b>, <b>Human Voice</b> (four formant choirs) and, new in 0.3, an <b>Organ</b> of four square-wave feet. A fourth path, the <b>Vocoder</b>, imposes the spectrum of whatever enters the Move's audio input onto the keys. Everything is written from scratch in one C file; there is no code, sample or ROM from any original instrument.</p>
+  <p>The keys are paraphonic: every note of a pitch class is made from one master oscillator through octave dividers, so chords stay phase-locked as on the originals. Waveforms are band-limited (PolyBLEP), and the whole thing costs about 7% of one desktop core in the worst case, 24 keys with everything on.</p>
+</section>
+
+<hr class="rule">
+<section id="install">
+  <h2><small>Install</small>Build it, then put it on the Move</h2>
+  <p>You need a Move with Schwung installed, and Docker or an <code>aarch64-linux-gnu-</code> toolchain to build.</p>
+<pre><code>bash scripts/build.sh      # makes dist/vdp33/ and dist/vdp33-module.tar.gz</code></pre>
+  <p>Then either open Schwung Manager at <code>http://move.local:7700</code>, go to <i>Modules</i> and install a custom module from the tarball, or run <code>bash scripts/install.sh</code> to copy the folder over SSH. Restart the Move afterwards, because Schwung can keep an older copy of a module in memory.</p>
+  <p>Releases are built by GitHub Actions on every <code>v*</code> tag. The tarball in the release is what the Schwung module catalogue installs.</p>
+</section>
+
+<hr class="rule">
+<section id="play">
+  <h2><small>Play</small>First sound in a minute</h2>
+  <ol>
+    <li>Hold <kbd>Track 1-4</kbd> for half a second to open a slot, and choose <b>VDP33</b> as the sound generator.</li>
+    <li>On that Move track set <b>MIDI Out</b> to a channel from 1 to 4, check the slot's <b>Receive Ch</b> matches, and load an empty Drum Rack so the native sound stays quiet.</li>
+    <li>Play the pads. The first preset, <i>Strings</i>, needs no microphone.</li>
+    <li>For the vocoder pick the <i>Vocoder</i> preset, plug in headphones or a line-in cable, and speak.</li>
+  </ol>
+  <div class="note"><b>The vocoder listens to the Move's audio input.</b> With the built-in speaker on and nothing plugged in, Schwung's feedback guard bypasses the slot and a <b>B</b> appears. Plug in headphones or a cable and it comes back by itself. The Move has one input, so there is no separate external synth input: Ext In is the same signal as the vocoder modulator and shares <i>Mic Level</i>.</div>
+  <p>The screen has nine pages of up to eight knobs: Main, Balance, Keyboard, Organ, Strings, Envelope, Ensemble, Vibrato and Pitch. Turn a knob and its value is shown in real units (milliseconds, cents, semitones).</p>
+</section>
+
+<hr class="rule">
+<section id="panel">
+  <h2><small>The panel</small>Where everything lives</h2>
+
+  <h3>Balance and output</h3>
+  <p><i>Strings</i>, <i>Human Voice</i>, <i>Organ</i> and <i>Direct Mic</i> are the four faders. Levels follow a square law, so the lower half of a fader is a quiet region. <i>Ext In to Ensemble</i> sends the audio input through the ensemble untouched. <i>Master Tone</i> tilts the whole mix darker or brighter around 1.2 kHz, up to 6 dB either way. <i>Volume</i> is the master.</p>
+
+  <h3>Vocoder</h3>
+  <p><i>Vocoder Keys</i> chooses Off, Lower, Upper or All; Lower and Upper are split at <i>Split Point</i>. <i>Mic Level</i> is input gain from -12 to +24 dB, <i>Vocoder Tone</i> a brightness control for the carrier, <i>Sibilance</i> adds a noise path so consonants stay clear, and <i>Ensemble</i> sends the vocoder through the chorus.</p>
+
+  <h3>Human voice</h3>
+  <p>Four switches pick the choirs: Male 8' Lower, Male 4' Lower, Male 8' Upper and Female 4' Upper. <i>Attack</i> sets how fast they swell and <i>Ensemble</i> sends them through the chorus.</p>
+
+  <h3>Strings <span class="tag rs">RS-09</span></h3>
+  <p><i>Register</i> is <b>VP-330</b> (the original 16', 8' and 4' mix), <b>8'</b> alone, <b>4'</b> alone, or <b>8' + 4'</b>. <i>Tone</i> darkens or opens the strings, <i>Attack</i> is their swell, and <i>Attack on legato</i> decides whether every new key swells again (<b>Each key</b>) or only the first key of a phrase does (<b>First key</b>). The strings always run through the ensemble.</p>
+
+  <h3>Organ <span class="tag rs">RS-09</span></h3>
+  <p>Four faders mix the feet 8', 4', 2' and 1' of square waves. <i>Tone</i> is <b>I Soft</b> or <b>II Bright</b>, <i>Ensemble</i> sends the organ through the chorus, and <i>Vibrato on organ</i> lets the vibrato reach it. <i>Organ Keys</i> picks Off, Lower, Upper or All, so strings can sit under the split and an organ above it.</p>
+
+  <h3>Envelope <span class="tag rs">RS-09</span></h3>
+  <p>One <i>Release</i> fader serves all sections. <i>Release mode</i> has three settings:</p>
+  <ul>
+    <li><b>Free</b>: each key owns one envelope, and a key you replay picks its own tail up again. This is how VDP33 behaved before 0.3.</li>
+    <li><b>I Wait</b>: when no key is held, a new note waits until the old tail has faded below about -35 dB.</li>
+    <li><b>II Hold</b>: a replayed key gets a new voice while the old tail finishes on its own.</li>
+  </ul>
+  <p>The editor draws the envelope of two notes for the mode you have chosen.</p>
+
+  <h3>Ensemble <span class="tag rs">RS-09</span></h3>
+  <p><i>Ensemble Mode</i> is <b>Standard</b> (the original), <b>I Dynamic</b> (deeper, faster and wetter) or <b>II Natural</b> (shallower and calmer). <i>Depth</i> and <i>Speed</i> are fine trims on top.</p>
+
+  <h3>Vibrato</h3>
+  <p><i>Rate</i> from 2 to 9 Hz, <i>Delay</i> up to two seconds before it fades in, <i>Depth</i> up to ±60 cents. Vibrato always reaches Human Voice and Vocoder. <i>Vibrato on strings</i> and <i>Vibrato on organ</i> let it reach those sections too.</p>
+
+  <h3>Pitch shift and tuning <span class="tag vp">VP-330</span></h3>
+  <p><i>Pitch Shift Mode</i> is <b>Off/Pedal</b>, <b>Auto</b> or <b>Manual</b>. In Auto, each key press drops the pitch by <i>Pitch Set</i> and it glides back up over <i>Time</i>. Manual holds a static shift set by <i>Pitch Down</i>. Off/Pedal does nothing until CC 66 is held, then it acts like Auto. The shift now reaches all three sections. <i>Tune</i> is ±50 cents, and <i>Reference A</i> switches 440 to 442 Hz. <i>Bend Range</i> and <i>Octave</i> complete the section.</p>
+
+  <h3>Keyboard and pedals</h3>
+  <p><i>Split Point</i> divides Lower from Upper. <i>Velocity</i> is Fixed or Dynamic. <i>Pedal (CC 64)</i> has four settings:</p>
+  <ul>
+    <li><b>Off</b>: the pedal does nothing.</li>
+    <li><b>Gate</b>: the vocoder sounds only while the pedal is down (the old VDP33 behaviour).</li>
+    <li><b>Hold</b>: a true Vocoder Hold. Pressing it freezes the ten band levels, so the vocal colour keeps sounding without any input.</li>
+    <li><b>Release</b>: the RS-09 Release pedal. With the pedal up, release is zero; with it down, the Release fader applies.</li>
+  </ul>
+</section>
+
+<hr class="rule">
+<section id="rs09">
+  <h2><small>Updates in 0.3</small>What came from the RS-09 and the VP-330 manual</h2>
+  <div class="card">
+    <h3 style="margin-top:0">From the Roland RS-09</h3>
+    <ul>
+      <li>An <b>Organ</b> section with 8', 4', 2' and 1' faders, tone I and II, and its own ensemble switch.</li>
+      <li><b>Strings registers</b> 8' and 4', separate from the VP-330 mix.</li>
+      <li><b>Ensemble modes</b> I and II, <b>release modes</b> I and II, the <b>release pedal</b> and the <b>legato attack</b> choice.</li>
+      <li><b>Ext In through the ensemble</b>, a master <b>Tone</b>, a <b>442 Hz</b> reference, and vibrato switches for organ and strings.</li>
+      <li>Nine presets, numbers 15 to 23, named <i>RS ...</i>. The first fifteen are unchanged.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Corrected from the VP-330 owner's manual</h3>
+    <ul>
+      <li>Pitch shift reaches strings, voice and organ, not only voice and vocoder.</li>
+      <li>Tune is ±50 cents. It had been ±1 semitone.</li>
+      <li>Vocoder Hold now freezes the band levels. The old Gate behaviour stays as <i>Gate</i>.</li>
+    </ul>
+  </div>
+  <p>Old saved states load as before: parameters that did not exist are filled with neutral defaults, and Release mode defaults to <b>Free</b>, so a patch made in 0.2 sounds like it did.</p>
+</section>
+
+<hr class="rule">
+<section id="editor">
+  <h2><small>Web editor</small>The same panel in a browser</h2>
+  <p>With VDP33 in a slot, open Schwung Manager at <code>http://move.local:7700</code> and choose <i>Remote UI</i>. VDP33's own editor appears there: fader and knobs for every parameter, the preset list, and a picture of the envelope. Everything follows the Move as you turn its knobs, and the Move follows the browser.</p>
+  <p>The same page runs as a demo without a Move: <a href="editor.html">open the demo editor</a>. A rough on-screen keyboard plays a simplified browser version of the Organ and Strings so you can see what the controls do; Human Voice and the Vocoder are silent there, and the real sound is on the Move.</p>
+  <p>Mouse: drag a knob or fader up and down, use the wheel, double-click to reset, hold Shift for fine steps. Keyboard: arrows, Page Up and Page Down, Home and End.</p>
+</section>
+
+<hr class="rule">
+<section id="midi">
+  <h2><small>MIDI</small>Notes, bend and two pedals</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Note on / off</td><td>Plays the keys; velocity is used when Velocity is Dynamic.</td></tr>
+      <tr><td>Pitch bend</td><td>Bends all sections within <i>Bend Range</i>.</td></tr>
+      <tr><td><code>CC 64</code> sustain</td><td>Gate, Hold or Release, as chosen in <i>Pedal (CC 64)</i>.</td></tr>
+      <tr><td><code>CC 66</code> sostenuto</td><td>The Pitch Shift footswitch.</td></tr>
+      <tr><td>All notes off</td><td>Releases every key.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<hr class="rule">
+<section id="presets">
+  <h2><small>Presets</small>Twenty-four starting points</h2>
+  <p>Selecting a preset resets every parameter to its default, applies the preset's own values, and keeps Octave, Bend Range, Volume, Tune, Velocity, Reference A and Master Tone as you set them.</p>
+  <ul class="presets">
+<!-- presets:begin -->
+<li><b>00</b><span>Strings</span><i>Strings Level 85%, Strings Keys All, Strings Attack 30%, Release (all) 35%</i></li>
+<li><b>01</b><span>Slow Strings</span><i>Strings Level 85%, Strings Keys All, Strings Attack 70%, Release (all) 60%, Strings Tone 40%</i></li>
+<li><b>02</b><span>Bright Strings</span><i>Strings Level 80%, Strings Keys All, Strings Attack 20%, Release (all) 30%, Strings Tone 80%, Ensemble Depth 80%</i></li>
+<li><b>03</b><span>Male Choir 8&#x27;</span><i>Human Voice Level 85%, Voice Male 8&#x27; Lower On, Voice Male 8&#x27; Upper On, Human Voice Attack 50%, Release (all) 50%</i></li>
+<li><b>04</b><span>Choir 8&#x27; + 4&#x27;</span><i>Human Voice Level 62%, Voice Male 8&#x27; Lower On, Voice Male 4&#x27; Lower On, Voice Male 8&#x27; Upper On, Voice Female 4&#x27; Upper On, Human Voice Attack 45%, Release (all) 50%</i></li>
+<li><b>05</b><span>Female 4&#x27; + Strings</span><i>Human Voice Level 80%, Strings Level 55%, Voice Female 4&#x27; Upper On, Strings Keys Lower, Human Voice Attack 40%, Strings Attack 35%, Release (all) 45%</i></li>
+<li><b>06</b><span>Voice + Strings</span><i>Strings Level 60%, Human Voice Level 70%, Strings Keys All, Voice Male 8&#x27; Lower On, Voice Male 8&#x27; Upper On, Strings Attack 40%, Human Voice Attack 45%, Release (all) 45%</i></li>
+<li><b>07</b><span>Vocoder</span><i>Vocoder Keys All, Mic Level 60%, Release (all) 20%</i></li>
+<li><b>08</b><span>Vocoder Ensemble</span><i>Vocoder Keys All, Mic Level 60%, Release (all) 20%, Vocoder Ensemble On</i></li>
+<li><b>09</b><span>Vocoder + Strings</span><i>Vocoder Keys All, Mic Level 60%, Strings Level 35%, Strings Keys All, Strings Attack 30%, Release (all) 30%</i></li>
+<li><b>10</b><span>Split Str / Voc</span><i>Strings Level 80%, Strings Keys Lower, Vocoder Keys Upper, Mic Level 60%, Strings Attack 35%, Release (all) 30%</i></li>
+<li><b>11</b><span>Split Voice / Str</span><i>Strings Level 60%, Human Voice Level 65%, Strings Keys Upper, Voice Male 8&#x27; Lower On, Voice Male 4&#x27; Lower On, Strings Attack 35%, Human Voice Attack 40%, Release (all) 40%</i></li>
+<li><b>12</b><span>Voice Vibrato</span><i>Human Voice Level 85%, Voice Male 8&#x27; Lower On, Voice Male 8&#x27; Upper On, Human Voice Attack 35%, Release (all) 40%, Vibrato Depth 35%, Vibrato Rate 55%, Vibrato Delay 50%</i></li>
+<li><b>13</b><span>Pitch Dive</span><i>Human Voice Level 85%, Voice Male 8&#x27; Lower On, Voice Male 8&#x27; Upper On, Human Voice Attack 10%, Release (all) 35%, Pitch Shift Mode Auto, Pitch Set 30%, Pitch Shift Time 40%</i></li>
+<li><b>14</b><span>Full Mix</span><i>Strings Level 55%, Human Voice Level 55%, Strings Keys All, Voice Male 8&#x27; Lower On, Voice Male 8&#x27; Upper On, Vocoder Keys All, Mic Level 60%, Strings Attack 35%, Human Voice Attack 40%, Release (all) 35%, Vocoder Ensemble On</i></li>
+<li><b>15</b><span>RS Strings 4&#x27;</span><i>Strings Level 85%, Strings Keys All, Strings Register 4&#x27;, Strings Attack 30%, Release (all) 35%, Ensemble Mode I Dynamic</i></li>
+<li><b>16</b><span>RS Strings 8&#x27;+4&#x27;</span><i>Strings Level 80%, Strings Keys All, Strings Register 8&#x27; + 4&#x27;, Strings Attack 35%, Release (all) 40%, Ensemble Mode I Dynamic</i></li>
+<li><b>17</b><span>RS Viola 8&#x27;</span><i>Strings Level 85%, Strings Keys All, Strings Register 8&#x27;, Strings Attack 40%, Release (all) 40%, Strings Tone 35%, Ensemble Mode II Natural</i></li>
+<li><b>18</b><span>RS Organ 8&#x27;</span><i>Organ Level 80%, Organ Keys All, Organ Feet 8&#x27; 90%, Release (all) 8%, Ensemble Mode I Dynamic</i></li>
+<li><b>19</b><span>RS Organ Full</span><i>Organ Level 70%, Organ Keys All, Organ Feet 8&#x27; 90%, Organ Feet 4&#x27; 75%, Organ Feet 2&#x27; 60%, Organ Feet 1&#x27; 45%, Organ Tone II Bright, Release (all) 10%, Ensemble Mode I Dynamic</i></li>
+<li><b>20</b><span>RS Vibraphone</span><i>Organ Level 80%, Organ Keys All, Organ Feet 8&#x27; 0%, Organ Feet 4&#x27; 90%, Organ Feet 1&#x27; 80%, Release (all) 100%, Organ Ensemble Off</i></li>
+<li><b>21</b><span>RS Strings+Organ</span><i>Strings Level 60%, Organ Level 55%, Strings Keys All, Organ Keys All, Strings Register 4&#x27;, Organ Feet 8&#x27; 85%, Organ Feet 4&#x27; 70%, Strings Attack 35%, Release (all) 30%, Ensemble Mode I Dynamic</i></li>
+<li><b>22</b><span>RS Orchestra</span><i>Strings Level 85%, Strings Keys All, Strings Register 8&#x27; + 4&#x27;, Strings Tone 20%, Strings Attack 50%, Release (all) 50%, Master Tone 30%, Ensemble Mode II Natural</i></li>
+<li><b>23</b><span>RS Ext Ensemble</span><i>Ext In to Ensemble 85%, Mic Level 55%, Ensemble Mode I Dynamic</i></li>
+<!-- presets:end -->
+  </ul>
+</section>
+
+<hr class="rule">
+<section id="reference">
+  <h2><small>Reference</small>Every parameter</h2>
+  <p>Parameter keys are what the editor, the Move's state files and the Schwung remote API use.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Parameter</th><th>Key</th><th>Range</th><th>Default</th></tr></thead>
+    <tbody>
+<!-- params:begin -->
+<tr class="grp"><th colspan="4" scope="rowgroup">Balance and output</th></tr>
+<tr><td>Volume</td><td><code>volume</code></td><td>0 to 1</td><td>0.8</td></tr>
+<tr><td>Strings Level</td><td><code>lvl_str</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Human Voice Level</td><td><code>lvl_voice</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Organ Level</td><td><code>lvl_org</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Direct Mic Level</td><td><code>direct_mic</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Ext In to Ensemble</td><td><code>ext_ens</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Master Tone</td><td><code>out_tone</code></td><td>0 to 1</td><td>0.5</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Vocoder</th></tr>
+<tr><td>Vocoder Keys</td><td><code>zone_voc</code></td><td>Off / Lower / Upper / All</td><td>Off</td></tr>
+<tr><td>Mic Level</td><td><code>mic_gain</code></td><td>0 to 1</td><td>0.5</td></tr>
+<tr><td>Vocoder Tone</td><td><code>voc_tone</code></td><td>0 to 1</td><td>0.8</td></tr>
+<tr><td>Vocoder Ensemble</td><td><code>ens_voc</code></td><td>Off / On</td><td>Off</td></tr>
+<tr><td>Sibilance</td><td><code>sibilance</code></td><td>0 to 1</td><td>0</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Human voice</th></tr>
+<tr><td>Voice Male 8&#x27; Lower</td><td><code>hv_m8_low</code></td><td>Off / On</td><td>Off</td></tr>
+<tr><td>Voice Male 4&#x27; Lower</td><td><code>hv_m4_low</code></td><td>Off / On</td><td>Off</td></tr>
+<tr><td>Voice Male 8&#x27; Upper</td><td><code>hv_m8_up</code></td><td>Off / On</td><td>Off</td></tr>
+<tr><td>Voice Female 4&#x27; Upper</td><td><code>hv_f4_up</code></td><td>Off / On</td><td>Off</td></tr>
+<tr><td>Human Voice Attack</td><td><code>att_voice</code></td><td>0 to 1</td><td>0.3</td></tr>
+<tr><td>Voice Ensemble</td><td><code>ens_voice</code></td><td>Off / On</td><td>On</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Strings</th></tr>
+<tr><td>Strings Keys</td><td><code>zone_str</code></td><td>Off / Lower / Upper / All</td><td>Off</td></tr>
+<tr><td>Strings Register</td><td><code>str_reg</code></td><td>VP-330 / 8&#x27; / 4&#x27; / 8&#x27; + 4&#x27;</td><td>VP-330</td></tr>
+<tr><td>Strings Attack</td><td><code>att_str</code></td><td>0 to 1</td><td>0.25</td></tr>
+<tr><td>Strings Tone</td><td><code>tone</code></td><td>0 to 1</td><td>0.5</td></tr>
+<tr><td>Attack on Legato</td><td><code>att_legato</code></td><td>Each key / First key</td><td>Each key</td></tr>
+<tr><td>Vibrato on Strings</td><td><code>vib_str</code></td><td>Off / On</td><td>Off</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Organ</th></tr>
+<tr><td>Organ Keys</td><td><code>zone_org</code></td><td>Off / Lower / Upper / All</td><td>Off</td></tr>
+<tr><td>Organ Feet 8&#x27;</td><td><code>org_8</code></td><td>0 to 1</td><td>0.8</td></tr>
+<tr><td>Organ Feet 4&#x27;</td><td><code>org_4</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Organ Feet 2&#x27;</td><td><code>org_2</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Organ Feet 1&#x27;</td><td><code>org_1</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Organ Tone</td><td><code>org_tone</code></td><td>I Soft / II Bright</td><td>I Soft</td></tr>
+<tr><td>Organ Ensemble</td><td><code>ens_org</code></td><td>Off / On</td><td>On</td></tr>
+<tr><td>Vibrato on Organ</td><td><code>vib_org</code></td><td>Off / On</td><td>On</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Envelope</th></tr>
+<tr><td>Release (all)</td><td><code>release</code></td><td>0 to 1</td><td>0.3</td></tr>
+<tr><td>Release Mode</td><td><code>rel_mode</code></td><td>Free / I Wait / II Hold</td><td>Free</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Ensemble</th></tr>
+<tr><td>Ensemble Mode</td><td><code>ens_mode</code></td><td>Standard / I Dynamic / II Natural</td><td>Standard</td></tr>
+<tr><td>Ensemble Depth</td><td><code>ens_depth</code></td><td>0 to 1</td><td>0.7</td></tr>
+<tr><td>Ensemble Speed</td><td><code>ens_rate</code></td><td>0 to 1</td><td>0.5</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Vibrato</th></tr>
+<tr><td>Vibrato Rate</td><td><code>vib_rate</code></td><td>0 to 1</td><td>0.5</td></tr>
+<tr><td>Vibrato Delay</td><td><code>vib_delay</code></td><td>0 to 1</td><td>0.3</td></tr>
+<tr><td>Vibrato Depth</td><td><code>vib_depth</code></td><td>0 to 1</td><td>0</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Pitch shift and tuning</th></tr>
+<tr><td>Pitch Shift Mode</td><td><code>ps_mode</code></td><td>Off/Pedal / Auto / Manual</td><td>Off/Pedal</td></tr>
+<tr><td>Pitch Set</td><td><code>ps_set</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Pitch Shift Time</td><td><code>ps_time</code></td><td>0 to 1</td><td>0.4</td></tr>
+<tr><td>Pitch Down (manual)</td><td><code>ps_fader</code></td><td>0 to 1</td><td>0</td></tr>
+<tr><td>Tune</td><td><code>tune</code></td><td>0 to 1</td><td>0.5</td></tr>
+<tr><td>Reference A</td><td><code>tune_ref</code></td><td>440 Hz / 442 Hz</td><td>440 Hz</td></tr>
+<tr><td>Bend Range</td><td><code>bend_range</code></td><td>0 to 12</td><td>2</td></tr>
+<tr><td>Octave</td><td><code>octave_transpose</code></td><td>-3 to 3</td><td>0</td></tr>
+<tr class="grp"><th colspan="4" scope="rowgroup">Keyboard and pedals</th></tr>
+<tr><td>Split Point</td><td><code>split</code></td><td>36 to 84</td><td>60</td></tr>
+<tr><td>Velocity</td><td><code>velocity</code></td><td>Fixed / Dynamic</td><td>Fixed</td></tr>
+<tr><td>Pedal (CC 64)</td><td><code>voc_pedal</code></td><td>Off / Gate / Hold / Release</td><td>Off</td></tr>
+<!-- params:end -->
+    </tbody>
+  </table></div>
+</section>
+
+<hr class="rule">
+<section id="honest">
+  <h2><small>Honesty</small>What the manuals say, and what is a guess</h2>
+  <div class="two">
+    <div class="card">
+      <h3 style="margin-top:0">Confirmed <span class="tag vp">manuals</span></h3>
+      <ul>
+        <li>The section layout, four Human Voice switches, one shared Release.</li>
+        <li>Separate Attack for voice and strings; Tone on strings and vocoder.</li>
+        <li>Organ feet, strings registers, ensemble and release modes, release pedal and legato attack exist on the RS-09.</li>
+        <li>Pitch shift reaches all sections; Tune is ±50 cents; Vocoder Hold exists.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Estimates <span class="tag est">not measured</span></h3>
+      <ul>
+        <li>Centre frequencies and Q of the ten bands; choir formants; register mixes.</li>
+        <li>Ensemble delay times, rates and the two mode scalings.</li>
+        <li>Organ tone filters and foot weights.</li>
+        <li><b>The meaning of Release Mode I and II.</b> The RS-09 manual words it ambiguously. I implemented I as Wait and II as Hold, and kept Free as the default.</li>
+      </ul>
+    </div>
+  </div>
+  <p><b>Not modelled:</b> the Gate Out and Organ Raw Out jacks, the L/M/H output switch, a second input, SysEx, analogue drift and BBD companding noise. The constants most worth tuning against a real unit are <code>k_band_hz</code> and <code>BAND_Q</code>, the register mix in <code>vdp_render</code>, the formant tables and the ensemble constants; they are isolated and commented in <code>src/dsp/vdp33.c</code>.</p>
+  <p>The native test, <code>bash scripts/test.sh</code>, renders every preset to WAV and checks pitch, levels, vocoder tracking, Hold, zones, organ feet and tone, strings registers, release modes, legato attack, pedals, ensemble modes, master tone, old-state compatibility and CPU load.</p>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>VDP33 is MIT licensed, © 2026 CairnDebil. "VP-330", "RS-09" and "Roland" are trademarks of Roland Corporation, and "VC340" of Music Tribe. They are used only to say what this module is modelled on; this project is not affiliated with either company. <a href="https://github.com/CairnDebil/schwung-vdp33">github.com/CairnDebil/schwung-vdp33</a></p>
+  </div>
+</footer>
+
+<script id="vdp-data" type="application/json">
+{"version":"0.3.0","params":[{"key":"volume","name":"Volume","short":"Vol","type":"float","min":0.0,"max":1.0,"default":0.8,"step":0.01,"group":"Balance and output"},{"key":"lvl_str","name":"Strings Level","short":"Strg","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"lvl_voice","name":"Human Voice Level","short":"Voice","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"direct_mic","name":"Direct Mic Level","short":"Dirmc","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"zone_voc","name":"Vocoder Keys","short":"ZnVoc","type":"enum","options":["Off","Lower","Upper","All"],"min":0,"max":3,"default":0.0,"step":1,"group":"Vocoder"},{"key":"zone_str","name":"Strings Keys","short":"ZnStr","type":"enum","options":["Off","Lower","Upper","All"],"min":0,"max":3,"default":0.0,"step":1,"group":"Strings"},{"key":"hv_m8_low","name":"Voice Male 8' Lower","short":"M8Lo","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"hv_m4_low","name":"Voice Male 4' Lower","short":"M4Lo","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"hv_m8_up","name":"Voice Male 8' Upper","short":"M8Up","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"hv_f4_up","name":"Voice Female 4' Upper","short":"F4Up","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"split","name":"Split Point","short":"Split","type":"int","min":36.0,"max":84.0,"default":60.0,"step":1,"group":"Keyboard and pedals"},{"key":"att_str","name":"Strings Attack","short":"StrAt","type":"float","min":0.0,"max":1.0,"default":0.25,"step":0.01,"group":"Strings"},{"key":"att_voice","name":"Human Voice Attack","short":"VoiAt","type":"float","min":0.0,"max":1.0,"default":0.3,"step":0.01,"group":"Human voice"},{"key":"release","name":"Release (all)","short":"Rel","type":"float","min":0.0,"max":1.0,"default":0.3,"step":0.01,"group":"Envelope"},{"key":"tone","name":"Strings Tone","short":"Tone","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Strings"},{"key":"voc_tone","name":"Vocoder Tone","short":"VcTon","type":"float","min":0.0,"max":1.0,"default":0.8,"step":0.01,"group":"Vocoder"},{"key":"mic_gain","name":"Mic Level","short":"Mic","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Vocoder"},{"key":"ens_voice","name":"Voice Ensemble","short":"EnVoi","type":"enum","options":["Off","On"],"min":0,"max":1,"default":1.0,"step":1,"group":"Human voice"},{"key":"ens_voc","name":"Vocoder Ensemble","short":"EnVoc","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Vocoder"},{"key":"ens_depth","name":"Ensemble Depth","short":"EnDpt","type":"float","min":0.0,"max":1.0,"default":0.7,"step":0.01,"group":"Ensemble"},{"key":"ens_rate","name":"Ensemble Speed","short":"EnRat","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Ensemble"},{"key":"vib_rate","name":"Vibrato Rate","short":"VbRat","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Vibrato"},{"key":"vib_depth","name":"Vibrato Depth","short":"VbDpt","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Vibrato"},{"key":"vib_delay","name":"Vibrato Delay","short":"VbDly","type":"float","min":0.0,"max":1.0,"default":0.3,"step":0.01,"group":"Vibrato"},{"key":"ps_mode","name":"Pitch Shift Mode","short":"PsMod","type":"enum","options":["Off/Pedal","Auto","Manual"],"min":0,"max":2,"default":0.0,"step":1,"group":"Pitch shift and tuning"},{"key":"ps_set","name":"Pitch Set","short":"PsSet","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Pitch shift and tuning"},{"key":"ps_time","name":"Pitch Shift Time","short":"PsTim","type":"float","min":0.0,"max":1.0,"default":0.4,"step":0.01,"group":"Pitch shift and tuning"},{"key":"ps_fader","name":"Pitch Down (manual)","short":"PsFdr","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Pitch shift and tuning"},{"key":"tune","name":"Tune","short":"Tune","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Pitch shift and tuning"},{"key":"velocity","name":"Velocity","short":"Vel","type":"enum","options":["Fixed","Dynamic"],"min":0,"max":1,"default":0.0,"step":1,"group":"Keyboard and pedals"},{"key":"voc_pedal","name":"Pedal (CC 64)","short":"Pedal","type":"enum","options":["Off","Gate","Hold","Release"],"min":0,"max":3,"default":0.0,"step":1,"group":"Keyboard and pedals"},{"key":"sibilance","name":"Sibilance","short":"Sibil","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Vocoder"},{"key":"bend_range","name":"Bend Range","short":"Bend","type":"int","min":0.0,"max":12.0,"default":2.0,"step":1,"group":"Pitch shift and tuning"},{"key":"octave_transpose","name":"Octave","short":"Oct","type":"int","min":-3.0,"max":3.0,"default":0.0,"step":1,"group":"Pitch shift and tuning"},{"key":"lvl_org","name":"Organ Level","short":"Organ","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"zone_org","name":"Organ Keys","short":"ZnOrg","type":"enum","options":["Off","Lower","Upper","All"],"min":0,"max":3,"default":0.0,"step":1,"group":"Organ"},{"key":"org_8","name":"Organ Feet 8'","short":"Org8","type":"float","min":0.0,"max":1.0,"default":0.8,"step":0.01,"group":"Organ"},{"key":"org_4","name":"Organ Feet 4'","short":"Org4","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Organ"},{"key":"org_2","name":"Organ Feet 2'","short":"Org2","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Organ"},{"key":"org_1","name":"Organ Feet 1'","short":"Org1","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Organ"},{"key":"org_tone","name":"Organ Tone","short":"OrgTn","type":"enum","options":["I Soft","II Bright"],"min":0,"max":1,"default":0.0,"step":1,"group":"Organ"},{"key":"ens_org","name":"Organ Ensemble","short":"EnOrg","type":"enum","options":["Off","On"],"min":0,"max":1,"default":1.0,"step":1,"group":"Organ"},{"key":"str_reg","name":"Strings Register","short":"StrRg","type":"enum","options":["VP-330","8'","4'","8' + 4'"],"min":0,"max":3,"default":0.0,"step":1,"group":"Strings"},{"key":"rel_mode","name":"Release Mode","short":"RelMd","type":"enum","options":["Free","I Wait","II Hold"],"min":0,"max":2,"default":0.0,"step":1,"group":"Envelope"},{"key":"att_legato","name":"Attack on Legato","short":"Legat","type":"enum","options":["Each key","First key"],"min":0,"max":1,"default":0.0,"step":1,"group":"Strings"},{"key":"ens_mode","name":"Ensemble Mode","short":"EnMod","type":"enum","options":["Standard","I Dynamic","II Natural"],"min":0,"max":2,"default":0.0,"step":1,"group":"Ensemble"},{"key":"ext_ens","name":"Ext In to Ensemble","short":"ExtEn","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"vib_org","name":"Vibrato on Organ","short":"VbOrg","type":"enum","options":["Off","On"],"min":0,"max":1,"default":1.0,"step":1,"group":"Organ"},{"key":"vib_str","name":"Vibrato on Strings","short":"VbStr","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Strings"},{"key":"out_tone","name":"Master Tone","short":"MTone","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Balance and output"},{"key":"tune_ref","name":"Reference A","short":"RefA","type":"enum","options":["440 Hz","442 Hz"],"min":0,"max":1,"default":0.0,"step":1,"group":"Pitch shift and tuning"}],"presets":[{"name":"Strings","values":{"lvl_str":0.85,"zone_str":3.0,"att_str":0.3,"release":0.35}},{"name":"Slow Strings","values":{"lvl_str":0.85,"zone_str":3.0,"att_str":0.7,"release":0.6,"tone":0.4}},{"name":"Bright Strings","values":{"lvl_str":0.8,"zone_str":3.0,"att_str":0.2,"release":0.3,"tone":0.8,"ens_depth":0.8}},{"name":"Male Choir 8'","values":{"lvl_voice":0.85,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_voice":0.5,"release":0.5}},{"name":"Choir 8' + 4'","values":{"lvl_voice":0.62,"hv_m8_low":1.0,"hv_m4_low":1.0,"hv_m8_up":1.0,"hv_f4_up":1.0,"att_voice":0.45,"release":0.5}},{"name":"Female 4' + Strings","values":{"lvl_voice":0.8,"lvl_str":0.55,"hv_f4_up":1.0,"zone_str":1.0,"att_voice":0.4,"att_str":0.35,"release":0.45}},{"name":"Voice + Strings","values":{"lvl_str":0.6,"lvl_voice":0.7,"zone_str":3.0,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_str":0.4,"att_voice":0.45,"release":0.45}},{"name":"Vocoder","values":{"zone_voc":3.0,"mic_gain":0.6,"release":0.2}},{"name":"Vocoder Ensemble","values":{"zone_voc":3.0,"mic_gain":0.6,"release":0.2,"ens_voc":1.0}},{"name":"Vocoder + Strings","values":{"zone_voc":3.0,"mic_gain":0.6,"lvl_str":0.35,"zone_str":3.0,"att_str":0.3,"release":0.3}},{"name":"Split Str / Voc","values":{"lvl_str":0.8,"zone_str":1.0,"zone_voc":2.0,"mic_gain":0.6,"att_str":0.35,"release":0.3}},{"name":"Split Voice / Str","values":{"lvl_str":0.6,"lvl_voice":0.65,"zone_str":2.0,"hv_m8_low":1.0,"hv_m4_low":1.0,"att_str":0.35,"att_voice":0.4,"release":0.4}},{"name":"Voice Vibrato","values":{"lvl_voice":0.85,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_voice":0.35,"release":0.4,"vib_depth":0.35,"vib_rate":0.55,"vib_delay":0.5}},{"name":"Pitch Dive","values":{"lvl_voice":0.85,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_voice":0.1,"release":0.35,"ps_mode":1.0,"ps_set":0.3,"ps_time":0.4}},{"name":"Full Mix","values":{"lvl_str":0.55,"lvl_voice":0.55,"zone_str":3.0,"hv_m8_low":1.0,"hv_m8_up":1.0,"zone_voc":3.0,"mic_gain":0.6,"att_str":0.35,"att_voice":0.4,"release":0.35,"ens_voc":1.0}},{"name":"RS Strings 4'","values":{"lvl_str":0.85,"zone_str":3.0,"str_reg":2.0,"att_str":0.3,"release":0.35,"ens_mode":1.0}},{"name":"RS Strings 8'+4'","values":{"lvl_str":0.8,"zone_str":3.0,"str_reg":3.0,"att_str":0.35,"release":0.4,"ens_mode":1.0}},{"name":"RS Viola 8'","values":{"lvl_str":0.85,"zone_str":3.0,"str_reg":1.0,"att_str":0.4,"release":0.4,"tone":0.35,"ens_mode":2.0}},{"name":"RS Organ 8'","values":{"lvl_org":0.8,"zone_org":3.0,"org_8":0.9,"release":0.08,"ens_mode":1.0}},{"name":"RS Organ Full","values":{"lvl_org":0.7,"zone_org":3.0,"org_8":0.9,"org_4":0.75,"org_2":0.6,"org_1":0.45,"org_tone":1.0,"release":0.1,"ens_mode":1.0}},{"name":"RS Vibraphone","values":{"lvl_org":0.8,"zone_org":3.0,"org_8":0.0,"org_4":0.9,"org_1":0.8,"release":1.0,"ens_org":0.0}},{"name":"RS Strings+Organ","values":{"lvl_str":0.6,"lvl_org":0.55,"zone_str":3.0,"zone_org":3.0,"str_reg":2.0,"org_8":0.85,"org_4":0.7,"att_str":0.35,"release":0.3,"ens_mode":1.0}},{"name":"RS Orchestra","values":{"lvl_str":0.85,"zone_str":3.0,"str_reg":3.0,"tone":0.2,"att_str":0.5,"release":0.5,"out_tone":0.3,"ens_mode":2.0}},{"name":"RS Ext Ensemble","values":{"ext_ens":0.85,"mic_gain":0.55,"ens_mode":1.0}}],"pages":[{"id":"root","label":"Main","knobs":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","mic_gain","voc_tone","release"],"params":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","mic_gain","voc_tone","release"]},{"id":"balance","label":"Balance / Tone","knobs":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","mic_gain","voc_tone","tone"],"params":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","ext_ens","mic_gain","voc_tone","tone","out_tone","sibilance"]},{"id":"keys","label":"Keyboard","knobs":["zone_voc","zone_str","zone_org","hv_m8_low","hv_m4_low","hv_m8_up","hv_f4_up","split"],"params":["zone_voc","zone_str","zone_org","hv_m8_low","hv_m4_low","hv_m8_up","hv_f4_up","split","velocity"]},{"id":"organ","label":"Organ (RS-09)","knobs":["lvl_org","org_8","org_4","org_2","org_1","org_tone","ens_org","zone_org"],"params":["lvl_org","org_8","org_4","org_2","org_1","org_tone","ens_org","zone_org","vib_org"]},{"id":"strings","label":"Strings (RS-09)","knobs":["lvl_str","str_reg","att_str","tone","zone_str","att_legato","vib_str"],"params":["lvl_str","str_reg","att_str","tone","zone_str","att_legato","vib_str"]},{"id":"envelope","label":"Envelope","knobs":["att_str","att_voice","release","rel_mode","att_legato"],"params":["att_str","att_voice","release","rel_mode","att_legato"]},{"id":"ensemble","label":"Ensemble","knobs":["ens_voice","ens_voc","ens_org","ens_mode","ens_depth","ens_rate","ext_ens"],"params":["ens_voice","ens_voc","ens_org","ens_mode","ens_depth","ens_rate","ext_ens"]},{"id":"vibrato","label":"Vibrato","knobs":["vib_rate","vib_delay","vib_depth","vib_org","vib_str"],"params":["vib_rate","vib_delay","vib_depth","vib_org","vib_str"]},{"id":"pitch","label":"Pitch Shift","knobs":["ps_mode","ps_set","ps_time","ps_fader","tune","tune_ref","voc_pedal","octave_transpose"],"params":["ps_mode","ps_set","ps_time","ps_fader","tune","tune_ref","bend_range","octave_transpose","voc_pedal"]}],"keep":["octave_transpose","bend_range","volume","tune","velocity","tune_ref","out_tone"],"groups":["Balance and output","Vocoder","Human voice","Strings","Organ","Envelope","Ensemble","Vibrato","Pitch shift and tuning","Keyboard and pedals"]}
+</script>
+<script>
+(function () {
+  var SPEC = ["#ff2e93", "#ff6a3d", "#ff8f1f", "#ffc22e", "#ffe14a", "#9dff4a", "#26e8d8", "#2ab4ff", "#4d7bff", "#a24dff"];
+  var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var blobs = [];
+  for (var i = 0; i < 8; i++) blobs.push({ cx: Math.random(), cy: Math.random(), rx: .15 + Math.random() * .3, ry: .15 + Math.random() * .3, f: .05 + Math.random() * .08, ph: Math.random() * 6.28, r: .22 + Math.random() * .22, col: SPEC[(i * 3) % 10] });
+  function aura(t) {
+    var cv = document.getElementById("aura");
+    if (cv.width !== 320) { cv.width = 320; cv.height = 200; }
+    var g = cv.getContext("2d"), W = cv.width, H = cv.height;
+    g.globalCompositeOperation = "source-over"; g.fillStyle = "#0b0420"; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = "lighter";
+    blobs.forEach(function (b) {
+      var x = (0.5 + (b.cx - 0.5) * 0.9 + b.rx * Math.sin(t * b.f * 2 + b.ph)) * W;
+      var y = (0.5 + (b.cy - 0.5) * 0.9 + b.ry * Math.cos(t * b.f * 2.7 + b.ph * 1.3)) * H;
+      var r = b.r * W * (0.8 + 0.25 * Math.sin(t * b.f * 3 + b.ph));
+      var gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, b.col + "66"); gr.addColorStop(0.55, b.col + "22"); gr.addColorStop(1, b.col + "00");
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    });
+  }
+  function wheel(t) {
+    var cv = document.getElementById("wheel"), g = cv.getContext("2d"), S = cv.width, c = S / 2;
+    g.clearRect(0, 0, S, S);
+    for (var i = 0; i < 10; i++) {
+      var a = -Math.PI / 2 + i / 10 * Math.PI * 2;
+      var m = 0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.23) + i * 1.7);
+      var r0 = 70, r1 = r0 + 22 + (S / 2 - r0 - 28) * (0.15 + 0.85 * m);
+      g.strokeStyle = SPEC[i]; g.lineWidth = 16; g.lineCap = "round"; g.shadowColor = SPEC[i]; g.shadowBlur = 20;
+      g.beginPath(); g.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0); g.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); g.stroke();
+    }
+    g.shadowBlur = 0; g.strokeStyle = "rgba(246,236,255,.55)"; g.lineWidth = 2.5;
+    g.beginPath(); g.arc(c, c, 52, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = "rgba(246,236,255,.9)"; g.beginPath(); g.arc(c, c, 9, 0, Math.PI * 2); g.fill();
+  }
+  var t0 = performance.now();
+  function frame() { var t = (performance.now() - t0) / 1000; aura(t); wheel(t); if (!reduced) requestAnimationFrame(frame); }
+  frame();
+})();
+</script>
+</body>
+</html>

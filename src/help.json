@@ -1,0 +1,152 @@
+{
+  "title": "VDP33",
+  "children": [
+    {
+      "title": "Overview",
+      "lines": [
+        "Vocoder, strings,",
+        "human voice and",
+        "organ synth.",
+        "VP-330 / VC340 panel",
+        "plus the RS-09",
+        "organ and strings.",
+        "",
+        "Vocoder modulator is",
+        "the Move mic/line-in.",
+        "Use headphones or a",
+        "line-in cable: the",
+        "feedback guard mutes",
+        "mic + speakers."
+      ]
+    },
+    {
+      "title": "Balance",
+      "lines": [
+        "Direct Mic, Voice,",
+        "Strings and Organ",
+        "have a fader. The",
+        "vocoder has none:",
+        "use Mic Level and",
+        "Vocoder Tone.",
+        "",
+        "Release is one fader",
+        "for every section.",
+        "Master Tone tilts the",
+        "whole output."
+      ]
+    },
+    {
+      "title": "Keyboard",
+      "lines": [
+        "Vocoder, Strings and",
+        "Organ keys:",
+        " Off/Lower/Upper/All",
+        "",
+        "Human Voice switches:",
+        " Male 8' Lower",
+        " Male 4' Lower",
+        " Male 8' Upper",
+        " Female 4' Upper",
+        "",
+        "Split: key between",
+        "Lower and Upper."
+      ]
+    },
+    {
+      "title": "Organ (RS-09)",
+      "lines": [
+        "Feet 8' 4' 2' 1':",
+        "four faders mix the",
+        "organ. 4' is an octave",
+        "above 8', 1' is three.",
+        "",
+        "Tone I: soft",
+        "Tone II: bright",
+        "Ensemble: on/off",
+        "Vibrato on Organ:",
+        "on/off"
+      ]
+    },
+    {
+      "title": "Strings (RS-09)",
+      "lines": [
+        "Register:",
+        " VP-330 = the VP-330",
+        "  strings mix",
+        " 8' = viola range",
+        " 4' = violin range",
+        " 8' + 4' = both",
+        "",
+        "Attack on Legato:",
+        " First key = only the",
+        " first key of a",
+        " legato phrase fades",
+        " in (RS-09)."
+      ]
+    },
+    {
+      "title": "Envelope",
+      "lines": [
+        "Release: one fader.",
+        "Release Mode:",
+        " Free = VDP33 original",
+        " I Wait = a new key",
+        "  waits until the old",
+        "  tail has faded out",
+        " II Hold = replaying a",
+        "  key leaves its tail",
+        "  alone",
+        "Pedal Release (CC 64):",
+        " release only while",
+        " the pedal is down."
+      ]
+    },
+    {
+      "title": "Ensemble",
+      "lines": [
+        "Strings: always on.",
+        "Voice, Vocoder and",
+        "Organ: a switch each.",
+        "",
+        "Mode I: dynamic, rich",
+        "Mode II: natural",
+        "Ext In to Ensemble:",
+        "the Move input goes",
+        "through the ensemble",
+        "(RS-09 external in)."
+      ]
+    },
+    {
+      "title": "Vibrato",
+      "lines": [
+        "Rate, Delay, Depth.",
+        "Always on Voice and",
+        "Vocoder (VP-330).",
+        "Switches add Organ",
+        "and Strings (RS-09)."
+      ]
+    },
+    {
+      "title": "Pitch Shift",
+      "lines": [
+        "Acts on all sections.",
+        "Auto: each key press",
+        " drops the pitch,",
+        " then it glides up.",
+        "Manual: Pitch Down",
+        " fader.",
+        "Off/Pedal: CC 66.",
+        "Pitch Set = amount,",
+        "Time = glide time.",
+        "",
+        "Pedal (CC 64):",
+        " Gate = vocoder only",
+        "  while pressed",
+        " Hold = freeze the",
+        "  vocoder spectrum",
+        " Release = RS-09",
+        "  sustain pedal"
+      ]
+    }
+  ]
+}

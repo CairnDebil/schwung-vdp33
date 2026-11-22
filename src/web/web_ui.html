@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VDP33 editor</title>
+<meta name="theme-color" content="#0b0420">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* VDP33 editor: a control panel under a liquid-light show.
+   Black-violet void, projected oil-and-water colour behind frosted panels,
+   one rainbow that means one thing: the ten bands of the vocoder, and the level
+   of every control is drawn in it. A lit tablet is gold.                      */
+:root {
+  --void: #0b0420;
+  --panel: rgba(21, 10, 52, .72);
+  --panel-solid: #150a34;
+  --ink: #f6ecff;
+  --ink-2: #cbbbea;
+  --ink-3: #9482bd;
+  --hair: rgba(246, 236, 255, .18);
+  --gold: #ffd84a;
+  --mag: #ff2e93;
+  --cyan: #26e8d8;
+  --spec: linear-gradient(90deg, #ff2e93, #ff8f1f 22%, #ffe14a 40%, #7dff6a 56%, #26e8d8 72%, #4d7bff 86%, #a24dff);
+  --display: "Shrikhand", "Cooper Black", "Bookman Old Style", Georgia, serif;
+  --label: "Space Grotesk", "Avenir Next", "Century Gothic", system-ui, sans-serif;
+  --mono: "Space Mono", "Courier New", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh; color: var(--ink); font: 500 14px/1.45 var(--label); -webkit-font-smoothing: antialiased;
+  background: var(--void);
+}
+#aura { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; filter: blur(36px) saturate(1.35); opacity: .85; }
+.veil { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 0%, transparent 30%, rgba(11, 4, 32, .78) 100%); }
+main, header.top, footer { position: relative; z-index: 1; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+button, select { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+
+/* ------------------------------------------------------------ header */
+header.top { padding: 22px 0 6px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; }
+.logo { display: flex; align-items: center; gap: 14px; margin-right: auto; }
+.logo canvas { width: 78px; height: 78px; display: block; }
+h1 { margin: 0; font: 400 clamp(46px, 7vw, 76px)/.9 var(--display); letter-spacing: .01em;
+  background: var(--spec); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(255, 46, 147, .45)); }
+.tag { font: 700 10.5px/1.3 var(--label); letter-spacing: .3em; text-transform: uppercase; color: var(--ink-2); margin-top: 6px; }
+.where { display: inline-flex; align-items: center; gap: 8px; font: 700 10.5px/1 var(--label); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-2);
+  border: 1px solid var(--hair); border-radius: 20px; padding: 7px 12px; background: var(--panel); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); }
+.where[data-state="live"] .dot { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.where[data-state="wait"] .dot { background: var(--gold); animation: pulse 1.2s ease-in-out infinite; }
+.where[data-state="demo"] .dot { background: var(--mag); box-shadow: 0 0 10px var(--mag); }
+@keyframes pulse { 50% { opacity: .3; } }
+.presetbar { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--hair); border-radius: 22px; padding: 4px 6px; }
+.presetbar label { font: 700 10px/1 var(--label); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-3); padding: 0 6px 0 10px; }
+.presetbar select { background: transparent; border: 0; font: 600 15px var(--label); padding: 6px 4px; max-width: 220px; color: var(--ink); }
+.presetbar select option { background: var(--panel-solid); color: var(--ink); }
+.presetbar button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--hair); background: transparent; cursor: pointer; font-size: 14px; }
+.presetbar button:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ------------------------------------------------------------ panels */
+main { padding: 12px 0 30px; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.panel { position: relative; background: var(--panel); border: 1px solid var(--hair); border-radius: 22px; padding: 16px 18px 18px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0, 0, 0, .35); }
+.panel::before { content: ""; position: absolute; left: 18px; right: 18px; top: -1px; height: 2px; background: var(--spec); opacity: .8; border-radius: 2px; }
+.panel h2 { margin: 0 0 14px; font: 400 22px/1 var(--display); letter-spacing: .02em; color: var(--ink); display: flex; align-items: baseline; gap: 10px; }
+.panel h2 small { font: 700 9.5px/1 var(--label); letter-spacing: .24em; text-transform: uppercase; color: var(--ink-3); }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c6 { grid-column: span 6; }
+.c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+@media (max-width: 1000px) { .c3, .c4, .c5, .c6, .c7, .c8 { grid-column: span 12; } }
+@media (min-width: 1001px) and (max-width: 1180px) { .c3 { grid-column: span 6; } .c4 { grid-column: span 6; } }
+.row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; }
+#p-balance .fader { height: 190px; }
+.sub { margin: 14px 0 6px; font: 700 9.5px/1.2 var(--label); letter-spacing: .24em; text-transform: uppercase; color: var(--ink-3); }
+.sub:first-of-type { margin-top: 0; }
+
+/* knob */
+.ctl { display: grid; justify-items: center; gap: 4px; min-width: 66px; }
+.ctl .nm { font: 700 9.5px/1.15 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); text-align: center; max-width: 90px; }
+.ctl .vl { font: 700 11.5px/1 var(--mono); color: var(--gold); min-height: 12px; }
+.knob { width: 62px; height: 62px; cursor: ns-resize; touch-action: none; border-radius: 50%; }
+.knob svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.knob .tr { fill: none; stroke: rgba(246, 236, 255, .14); stroke-width: 5; stroke-linecap: round; }
+.knob .va { fill: none; stroke: url(#specStroke); stroke-width: 5; stroke-linecap: round; }
+.knob .cap { fill: #1c0f45; stroke: rgba(246, 236, 255, .4); stroke-width: 1.5; }
+.knob .nd { stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
+.knob:hover .cap { stroke: var(--gold); }
+
+/* fader */
+.fader { width: 38px; height: 150px; margin-bottom: 10px; position: relative; cursor: ns-resize; touch-action: none; }
+.fader .rail { position: absolute; left: 50%; top: 4px; bottom: 4px; width: 6px; margin-left: -3px; border-radius: 3px; background: rgba(246, 236, 255, .14); overflow: hidden; }
+.fader .fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #ff2e93, #ff8f1f 30%, #ffe14a 55%, #26e8d8 85%, #4d7bff); }
+.fader .hd { position: absolute; left: 3px; right: 3px; height: 20px; margin-top: -10px; border-radius: 7px; background: linear-gradient(#3a2a78, #1d1048); border: 1.5px solid rgba(246, 236, 255, .5); }
+.fader .hd::after { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: 2px; margin-top: -1px; background: var(--ink); border-radius: 1px; }
+.fader:hover .hd { border-color: var(--gold); }
+
+/* tablets: lit gold when on */
+.tabl { display: grid; justify-items: center; gap: 5px; }
+.tabl button { width: 58px; height: 34px; border-radius: 10px; border: 1.5px solid rgba(246, 236, 255, .4); background: linear-gradient(#2a1966, #170c3b); cursor: pointer; position: relative; }
+.tabl button::after { content: ""; position: absolute; left: 50%; top: 7px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #3a2a78; border: 1px solid rgba(246, 236, 255, .35); }
+.tabl button[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 14px rgba(255, 216, 74, .45), inset 0 0 12px rgba(255, 216, 74, .25); }
+.tabl button[aria-pressed="true"]::after { background: var(--gold); box-shadow: 0 0 10px var(--gold); border-color: var(--gold); }
+.tabl .nm { font: 700 9.5px/1.15 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); text-align: center; max-width: 92px; }
+
+/* segmented selector */
+.seg { display: grid; gap: 5px; }
+.seg .nm { font: 700 9.5px/1.15 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+.seg .opts { display: inline-flex; border: 1.5px solid rgba(246, 236, 255, .4); border-radius: 16px; overflow: hidden; flex-wrap: wrap; }
+.seg button { background: transparent; border: 0; border-right: 1px solid var(--hair); padding: 7px 11px; font: 700 11px/1.1 var(--label); letter-spacing: .06em; cursor: pointer; color: var(--ink-2); }
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: rgba(246, 236, 255, .08); color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--gold); color: #1b1040; }
+
+/* integer stepper */
+.step { display: grid; gap: 5px; justify-items: center; }
+.step .nm { font: 700 9.5px/1.15 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+.step .ctrl { display: inline-flex; align-items: center; border: 1.5px solid rgba(246, 236, 255, .4); border-radius: 18px; overflow: hidden; }
+.step button { width: 30px; height: 30px; border: 0; background: transparent; cursor: pointer; font-size: 16px; }
+.step button:hover { background: rgba(246, 236, 255, .1); color: var(--gold); }
+.step output { min-width: 64px; text-align: center; font: 700 12px/1 var(--mono); color: var(--gold); }
+
+/* envelope picture */
+.envbox { margin-top: 12px; border: 1px solid var(--hair); border-radius: 14px; background: rgba(5, 1, 18, .55); padding: 8px 10px 6px; }
+.envbox canvas { width: 100%; height: auto; display: block; }
+.envbox p { margin: 4px 0 0; font: 500 11.5px/1.4 var(--label); color: var(--ink-3); }
+
+/* demo keyboard */
+.demo-only[hidden] { display: none; }
+.kbd { display: flex; align-items: flex-start; gap: 0; padding: 6px 0 2px; overflow-x: auto; user-select: none; touch-action: none; }
+.key { position: relative; flex: 0 0 auto; width: 32px; height: 104px; border: 1px solid rgba(246, 236, 255, .5); border-radius: 0 0 8px 8px; background: linear-gradient(#efe4ff, #b9a4e6); cursor: pointer; }
+.key.blk { width: 20px; height: 66px; margin: 0 -10px; z-index: 2; background: linear-gradient(#2a1966, #0f0626); border-color: #000; }
+.key.on { background: linear-gradient(#ffe98a, #ffb347); }
+.key.blk.on { background: linear-gradient(#ff8f1f, #d1316f); }
+.keynote { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font: 500 12px/1.4 var(--label); color: var(--ink-2); }
+.keynote label { display: inline-flex; align-items: center; gap: 8px; font: 700 10px/1 var(--label); letter-spacing: .2em; text-transform: uppercase; }
+
+#toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px); z-index: 5; background: var(--gold); color: #1b1040; font: 700 12px/1 var(--label); letter-spacing: .1em;
+  padding: 10px 16px; border-radius: 20px; opacity: 0; transition: .2s; pointer-events: none; }
+#toast.on { opacity: 1; transform: translateX(-50%); }
+footer { padding: 6px 0 40px; }
+footer p { margin: 0; max-width: 90ch; font: 500 12px/1.55 var(--label); color: var(--ink-3); }
+footer a { color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .dot { animation: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="aura" aria-hidden="true"></canvas>
+<div class="veil" aria-hidden="true"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="specStroke" gradientUnits="userSpaceOnUse" x1="8" y1="56" x2="56" y2="8">
+      <stop offset="0" stop-color="#ff2e93"/><stop offset=".25" stop-color="#ff8f1f"/><stop offset=".45" stop-color="#ffe14a"/>
+      <stop offset=".65" stop-color="#7dff6a"/><stop offset=".82" stop-color="#26e8d8"/><stop offset="1" stop-color="#a24dff"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <div class="logo">
+        <canvas id="wheel" width="156" height="156" aria-hidden="true" title="Ten bands: decorative"></canvas>
+        <div>
+          <h1>VDP33</h1>
+          <div class="tag">Vocoder · Strings · Voices · Organ</div>
+        </div>
+      </div>
+      <div class="where" id="where" data-state="wait" role="status"><span class="dot"></span><span id="whereTxt">Waiting for VDP33</span></div>
+      <div class="presetbar">
+        <label for="preset">Preset</label>
+        <button type="button" id="pPrev" aria-label="Previous preset">&#9664;</button>
+        <select id="preset"></select>
+        <button type="button" id="pNext" aria-label="Next preset">&#9654;</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="grid" id="grid"></div>
+    <section class="panel demo-only c12" id="demoKeys" hidden style="margin-top:16px">
+      <h2>Try it <small>a rough preview, not the real engine</small></h2>
+      <div class="kbd" id="kbd" role="group" aria-label="On-screen keyboard"></div>
+      <div class="keynote">
+        <label><input type="checkbox" id="soundOn"> Sound</label>
+        <span>Click the keys, or play with A W S E D F T G Y H U J K. The browser preview only approximates Organ and Strings; Human Voice and Vocoder are silent here. The real sound is on the Move.</span>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap"><p id="foot"></p></div>
+</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script id="vdp-data" type="application/json">
+{"version":"0.3.0","params":[{"key":"volume","name":"Volume","short":"Vol","type":"float","min":0.0,"max":1.0,"default":0.8,"step":0.01,"group":"Balance and output"},{"key":"lvl_str","name":"Strings Level","short":"Strg","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"lvl_voice","name":"Human Voice Level","short":"Voice","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"direct_mic","name":"Direct Mic Level","short":"Dirmc","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"zone_voc","name":"Vocoder Keys","short":"ZnVoc","type":"enum","options":["Off","Lower","Upper","All"],"min":0,"max":3,"default":0.0,"step":1,"group":"Vocoder"},{"key":"zone_str","name":"Strings Keys","short":"ZnStr","type":"enum","options":["Off","Lower","Upper","All"],"min":0,"max":3,"default":0.0,"step":1,"group":"Strings"},{"key":"hv_m8_low","name":"Voice Male 8' Lower","short":"M8Lo","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"hv_m4_low","name":"Voice Male 4' Lower","short":"M4Lo","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"hv_m8_up","name":"Voice Male 8' Upper","short":"M8Up","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"hv_f4_up","name":"Voice Female 4' Upper","short":"F4Up","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Human voice"},{"key":"split","name":"Split Point","short":"Split","type":"int","min":36.0,"max":84.0,"default":60.0,"step":1,"group":"Keyboard and pedals"},{"key":"att_str","name":"Strings Attack","short":"StrAt","type":"float","min":0.0,"max":1.0,"default":0.25,"step":0.01,"group":"Strings"},{"key":"att_voice","name":"Human Voice Attack","short":"VoiAt","type":"float","min":0.0,"max":1.0,"default":0.3,"step":0.01,"group":"Human voice"},{"key":"release","name":"Release (all)","short":"Rel","type":"float","min":0.0,"max":1.0,"default":0.3,"step":0.01,"group":"Envelope"},{"key":"tone","name":"Strings Tone","short":"Tone","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Strings"},{"key":"voc_tone","name":"Vocoder Tone","short":"VcTon","type":"float","min":0.0,"max":1.0,"default":0.8,"step":0.01,"group":"Vocoder"},{"key":"mic_gain","name":"Mic Level","short":"Mic","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Vocoder"},{"key":"ens_voice","name":"Voice Ensemble","short":"EnVoi","type":"enum","options":["Off","On"],"min":0,"max":1,"default":1.0,"step":1,"group":"Human voice"},{"key":"ens_voc","name":"Vocoder Ensemble","short":"EnVoc","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Vocoder"},{"key":"ens_depth","name":"Ensemble Depth","short":"EnDpt","type":"float","min":0.0,"max":1.0,"default":0.7,"step":0.01,"group":"Ensemble"},{"key":"ens_rate","name":"Ensemble Speed","short":"EnRat","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Ensemble"},{"key":"vib_rate","name":"Vibrato Rate","short":"VbRat","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Vibrato"},{"key":"vib_depth","name":"Vibrato Depth","short":"VbDpt","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Vibrato"},{"key":"vib_delay","name":"Vibrato Delay","short":"VbDly","type":"float","min":0.0,"max":1.0,"default":0.3,"step":0.01,"group":"Vibrato"},{"key":"ps_mode","name":"Pitch Shift Mode","short":"PsMod","type":"enum","options":["Off/Pedal","Auto","Manual"],"min":0,"max":2,"default":0.0,"step":1,"group":"Pitch shift and tuning"},{"key":"ps_set","name":"Pitch Set","short":"PsSet","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Pitch shift and tuning"},{"key":"ps_time","name":"Pitch Shift Time","short":"PsTim","type":"float","min":0.0,"max":1.0,"default":0.4,"step":0.01,"group":"Pitch shift and tuning"},{"key":"ps_fader","name":"Pitch Down (manual)","short":"PsFdr","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Pitch shift and tuning"},{"key":"tune","name":"Tune","short":"Tune","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Pitch shift and tuning"},{"key":"velocity","name":"Velocity","short":"Vel","type":"enum","options":["Fixed","Dynamic"],"min":0,"max":1,"default":0.0,"step":1,"group":"Keyboard and pedals"},{"key":"voc_pedal","name":"Pedal (CC 64)","short":"Pedal","type":"enum","options":["Off","Gate","Hold","Release"],"min":0,"max":3,"default":0.0,"step":1,"group":"Keyboard and pedals"},{"key":"sibilance","name":"Sibilance","short":"Sibil","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Vocoder"},{"key":"bend_range","name":"Bend Range","short":"Bend","type":"int","min":0.0,"max":12.0,"default":2.0,"step":1,"group":"Pitch shift and tuning"},{"key":"octave_transpose","name":"Octave","short":"Oct","type":"int","min":-3.0,"max":3.0,"default":0.0,"step":1,"group":"Pitch shift and tuning"},{"key":"lvl_org","name":"Organ Level","short":"Organ","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"zone_org","name":"Organ Keys","short":"ZnOrg","type":"enum","options":["Off","Lower","Upper","All"],"min":0,"max":3,"default":0.0,"step":1,"group":"Organ"},{"key":"org_8","name":"Organ Feet 8'","short":"Org8","type":"float","min":0.0,"max":1.0,"default":0.8,"step":0.01,"group":"Organ"},{"key":"org_4","name":"Organ Feet 4'","short":"Org4","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Organ"},{"key":"org_2","name":"Organ Feet 2'","short":"Org2","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Organ"},{"key":"org_1","name":"Organ Feet 1'","short":"Org1","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Organ"},{"key":"org_tone","name":"Organ Tone","short":"OrgTn","type":"enum","options":["I Soft","II Bright"],"min":0,"max":1,"default":0.0,"step":1,"group":"Organ"},{"key":"ens_org","name":"Organ Ensemble","short":"EnOrg","type":"enum","options":["Off","On"],"min":0,"max":1,"default":1.0,"step":1,"group":"Organ"},{"key":"str_reg","name":"Strings Register","short":"StrRg","type":"enum","options":["VP-330","8'","4'","8' + 4'"],"min":0,"max":3,"default":0.0,"step":1,"group":"Strings"},{"key":"rel_mode","name":"Release Mode","short":"RelMd","type":"enum","options":["Free","I Wait","II Hold"],"min":0,"max":2,"default":0.0,"step":1,"group":"Envelope"},{"key":"att_legato","name":"Attack on Legato","short":"Legat","type":"enum","options":["Each key","First key"],"min":0,"max":1,"default":0.0,"step":1,"group":"Strings"},{"key":"ens_mode","name":"Ensemble Mode","short":"EnMod","type":"enum","options":["Standard","I Dynamic","II Natural"],"min":0,"max":2,"default":0.0,"step":1,"group":"Ensemble"},{"key":"ext_ens","name":"Ext In to Ensemble","short":"ExtEn","type":"float","min":0.0,"max":1.0,"default":0.0,"step":0.01,"group":"Balance and output"},{"key":"vib_org","name":"Vibrato on Organ","short":"VbOrg","type":"enum","options":["Off","On"],"min":0,"max":1,"default":1.0,"step":1,"group":"Organ"},{"key":"vib_str","name":"Vibrato on Strings","short":"VbStr","type":"enum","options":["Off","On"],"min":0,"max":1,"default":0.0,"step":1,"group":"Strings"},{"key":"out_tone","name":"Master Tone","short":"MTone","type":"float","min":0.0,"max":1.0,"default":0.5,"step":0.01,"group":"Balance and output"},{"key":"tune_ref","name":"Reference A","short":"RefA","type":"enum","options":["440 Hz","442 Hz"],"min":0,"max":1,"default":0.0,"step":1,"group":"Pitch shift and tuning"}],"presets":[{"name":"Strings","values":{"lvl_str":0.85,"zone_str":3.0,"att_str":0.3,"release":0.35}},{"name":"Slow Strings","values":{"lvl_str":0.85,"zone_str":3.0,"att_str":0.7,"release":0.6,"tone":0.4}},{"name":"Bright Strings","values":{"lvl_str":0.8,"zone_str":3.0,"att_str":0.2,"release":0.3,"tone":0.8,"ens_depth":0.8}},{"name":"Male Choir 8'","values":{"lvl_voice":0.85,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_voice":0.5,"release":0.5}},{"name":"Choir 8' + 4'","values":{"lvl_voice":0.62,"hv_m8_low":1.0,"hv_m4_low":1.0,"hv_m8_up":1.0,"hv_f4_up":1.0,"att_voice":0.45,"release":0.5}},{"name":"Female 4' + Strings","values":{"lvl_voice":0.8,"lvl_str":0.55,"hv_f4_up":1.0,"zone_str":1.0,"att_voice":0.4,"att_str":0.35,"release":0.45}},{"name":"Voice + Strings","values":{"lvl_str":0.6,"lvl_voice":0.7,"zone_str":3.0,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_str":0.4,"att_voice":0.45,"release":0.45}},{"name":"Vocoder","values":{"zone_voc":3.0,"mic_gain":0.6,"release":0.2}},{"name":"Vocoder Ensemble","values":{"zone_voc":3.0,"mic_gain":0.6,"release":0.2,"ens_voc":1.0}},{"name":"Vocoder + Strings","values":{"zone_voc":3.0,"mic_gain":0.6,"lvl_str":0.35,"zone_str":3.0,"att_str":0.3,"release":0.3}},{"name":"Split Str / Voc","values":{"lvl_str":0.8,"zone_str":1.0,"zone_voc":2.0,"mic_gain":0.6,"att_str":0.35,"release":0.3}},{"name":"Split Voice / Str","values":{"lvl_str":0.6,"lvl_voice":0.65,"zone_str":2.0,"hv_m8_low":1.0,"hv_m4_low":1.0,"att_str":0.35,"att_voice":0.4,"release":0.4}},{"name":"Voice Vibrato","values":{"lvl_voice":0.85,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_voice":0.35,"release":0.4,"vib_depth":0.35,"vib_rate":0.55,"vib_delay":0.5}},{"name":"Pitch Dive","values":{"lvl_voice":0.85,"hv_m8_low":1.0,"hv_m8_up":1.0,"att_voice":0.1,"release":0.35,"ps_mode":1.0,"ps_set":0.3,"ps_time":0.4}},{"name":"Full Mix","values":{"lvl_str":0.55,"lvl_voice":0.55,"zone_str":3.0,"hv_m8_low":1.0,"hv_m8_up":1.0,"zone_voc":3.0,"mic_gain":0.6,"att_str":0.35,"att_voice":0.4,"release":0.35,"ens_voc":1.0}},{"name":"RS Strings 4'","values":{"lvl_str":0.85,"zone_str":3.0,"str_reg":2.0,"att_str":0.3,"release":0.35,"ens_mode":1.0}},{"name":"RS Strings 8'+4'","values":{"lvl_str":0.8,"zone_str":3.0,"str_reg":3.0,"att_str":0.35,"release":0.4,"ens_mode":1.0}},{"name":"RS Viola 8'","values":{"lvl_str":0.85,"zone_str":3.0,"str_reg":1.0,"att_str":0.4,"release":0.4,"tone":0.35,"ens_mode":2.0}},{"name":"RS Organ 8'","values":{"lvl_org":0.8,"zone_org":3.0,"org_8":0.9,"release":0.08,"ens_mode":1.0}},{"name":"RS Organ Full","values":{"lvl_org":0.7,"zone_org":3.0,"org_8":0.9,"org_4":0.75,"org_2":0.6,"org_1":0.45,"org_tone":1.0,"release":0.1,"ens_mode":1.0}},{"name":"RS Vibraphone","values":{"lvl_org":0.8,"zone_org":3.0,"org_8":0.0,"org_4":0.9,"org_1":0.8,"release":1.0,"ens_org":0.0}},{"name":"RS Strings+Organ","values":{"lvl_str":0.6,"lvl_org":0.55,"zone_str":3.0,"zone_org":3.0,"str_reg":2.0,"org_8":0.85,"org_4":0.7,"att_str":0.35,"release":0.3,"ens_mode":1.0}},{"name":"RS Orchestra","values":{"lvl_str":0.85,"zone_str":3.0,"str_reg":3.0,"tone":0.2,"att_str":0.5,"release":0.5,"out_tone":0.3,"ens_mode":2.0}},{"name":"RS Ext Ensemble","values":{"ext_ens":0.85,"mic_gain":0.55,"ens_mode":1.0}}],"pages":[{"id":"root","label":"Main","knobs":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","mic_gain","voc_tone","release"],"params":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","mic_gain","voc_tone","release"]},{"id":"balance","label":"Balance / Tone","knobs":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","mic_gain","voc_tone","tone"],"params":["volume","lvl_str","lvl_voice","lvl_org","direct_mic","ext_ens","mic_gain","voc_tone","tone","out_tone","sibilance"]},{"id":"keys","label":"Keyboard","knobs":["zone_voc","zone_str","zone_org","hv_m8_low","hv_m4_low","hv_m8_up","hv_f4_up","split"],"params":["zone_voc","zone_str","zone_org","hv_m8_low","hv_m4_low","hv_m8_up","hv_f4_up","split","velocity"]},{"id":"organ","label":"Organ (RS-09)","knobs":["lvl_org","org_8","org_4","org_2","org_1","org_tone","ens_org","zone_org"],"params":["lvl_org","org_8","org_4","org_2","org_1","org_tone","ens_org","zone_org","vib_org"]},{"id":"strings","label":"Strings (RS-09)","knobs":["lvl_str","str_reg","att_str","tone","zone_str","att_legato","vib_str"],"params":["lvl_str","str_reg","att_str","tone","zone_str","att_legato","vib_str"]},{"id":"envelope","label":"Envelope","knobs":["att_str","att_voice","release","rel_mode","att_legato"],"params":["att_str","att_voice","release","rel_mode","att_legato"]},{"id":"ensemble","label":"Ensemble","knobs":["ens_voice","ens_voc","ens_org","ens_mode","ens_depth","ens_rate","ext_ens"],"params":["ens_voice","ens_voc","ens_org","ens_mode","ens_depth","ens_rate","ext_ens"]},{"id":"vibrato","label":"Vibrato","knobs":["vib_rate","vib_delay","vib_depth","vib_org","vib_str"],"params":["vib_rate","vib_delay","vib_depth","vib_org","vib_str"]},{"id":"pitch","label":"Pitch Shift","knobs":["ps_mode","ps_set","ps_time","ps_fader","tune","tune_ref","voc_pedal","octave_transpose"],"params":["ps_mode","ps_set","ps_time","ps_fader","tune","tune_ref","bend_range","octave_transpose","voc_pedal"]}],"keep":["octave_transpose","bend_range","volume","tune","velocity","tune_ref","out_tone"],"groups":["Balance and output","Vocoder","Human voice","Strings","Organ","Envelope","Ensemble","Vibrato","Pitch shift and tuning","Keyboard and pedals"]}
+</script>
+<script src="/static/schwung-remote-api.js"></script>
+<script>
+(function () {
+"use strict";
+
+/* ===================================================== parameters & state */
+const DATA = JSON.parse(document.getElementById("vdp-data").textContent);
+const DEFS = DATA.params, PRESETS = DATA.presets, KEEP = new Set(DATA.keep);
+const D = {}; DEFS.forEach((d) => { D[d.key] = d; });
+const P = {}; DEFS.forEach((d) => { P[d.key] = d.default; });
+let curPreset = 0;
+
+const qs = new URLSearchParams(location.search);
+const RT = window.schwungRemote;
+const mode = (!RT || qs.get("demo") === "1") ? "demo" : "chain";
+const prefix = (RT && RT.component ? RT.component : "synth") + ":";
+let gotData = false;
+const editing = {}, sendAt = {}, sendPending = {};
+const reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const nowMs = () => performance.now();
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+function wire(key, v) {
+  const d = D[key];
+  return d.type === "float" ? String(+v.toFixed(5)) : String(Math.round(v));
+}
+function send(key, v) {
+  const d = D[key];
+  v = clamp(v, d.min, d.max);
+  if (d.type !== "float") v = Math.round(v);
+  P[key] = v;
+  editing[key] = nowMs();
+  dirty[key] = 1;
+  if (mode === "demo") return;
+  const t = nowMs();
+  const fire = () => { sendAt[key] = nowMs(); sendPending[key] = 0; RT.setParam(prefix + key, wire(key, P[key])); };
+  if (!sendAt[key] || t - sendAt[key] > 30) fire();
+  else if (!sendPending[key]) { sendPending[key] = 1; setTimeout(fire, 32); }
+}
+
+/* the same rule as apply_preset() in vdp33.c */
+function applyPreset(i) {
+  if (i < 0 || i >= PRESETS.length) return;
+  for (const d of DEFS) if (!KEEP.has(d.key)) P[d.key] = d.default;
+  const v = PRESETS[i].values;
+  for (const k in v) P[k] = v[k];
+  curPreset = i;
+  for (const k in P) dirty[k] = 1;
+  dirty["*"] = 1;
+}
+function choosePreset(i) {
+  i = (i + PRESETS.length) % PRESETS.length;
+  applyPreset(i);
+  editing.preset = nowMs();
+  for (const k in P) editing[k] = nowMs();
+  if (mode !== "demo") RT.setParam(prefix + "preset", String(i));
+  toast(PRESETS[i].name);
+}
+
+function onParams(params) {
+  for (const full in params) {
+    let k = full;
+    const c = k.indexOf(":");
+    if (c >= 0) { if (k.slice(0, c + 1) !== prefix) continue; k = k.slice(c + 1); }
+    const v = params[full];
+    if (k === "preset") {
+      const f = parseInt(v, 10);
+      if (Number.isFinite(f) && f !== curPreset && !(editing.preset && nowMs() - editing.preset < 700)) { curPreset = clamp(f, 0, PRESETS.length - 1); dirty["*"] = 1; }
+      gotData = true;
+      continue;
+    }
+    if (!D[k]) continue;
+    if (editing[k] && nowMs() - editing[k] < 450) continue;
+    const f = parseFloat(v);
+    if (Number.isFinite(f) && f !== P[k]) { P[k] = f; dirty[k] = 1; }
+    gotData = true;
+  }
+  if (gotData) setWhere();
+}
+
+/* ================================================================ formatting */
+const NOTE = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+function fmtMs(ms) {
+  if (ms >= 1000) return (ms / 1000).toFixed(ms >= 10000 ? 1 : 2) + " s";
+  if (ms >= 100) return Math.round(ms) + " ms";
+  return ms.toFixed(ms >= 10 ? 1 : 2) + " ms";
+}
+const pct = (v) => Math.round(v * 100) + "%";
+/* the same curves as the engine (att_time, rel_time) */
+const attTime = (x) => (x < 0.005 ? 0 : 0.003 * Math.pow(800, x));
+const relTime = (x) => (x < 0.005 ? 0 : 0.015 * Math.pow(400, x));
+function fmt(key, v) {
+  switch (key) {
+    case "att_str": case "att_voice": { const t = attTime(v); return t ? fmtMs(t * 1000) : "0"; }
+    case "release": { const t = relTime(v); return t ? fmtMs(t * 1000) : "0"; }
+    case "tune": { const c = (v - 0.5) * 100; return (c > 0 ? "+" : "") + c.toFixed(0) + " ct"; }
+    case "ps_set": return v < 0.005 ? "0 st" : "-" + (v * 12).toFixed(1) + " st";
+    case "ps_time": return fmtMs(30 * Math.pow(60, v));
+    case "ps_fader": return v < 0.005 ? "normal" : "-" + (v * 100).toFixed(0) + "%";
+    case "vib_rate": return (2 + 7 * v).toFixed(1) + " Hz";
+    case "vib_delay": return (0.02 + 2 * v).toFixed(2) + " s";
+    case "vib_depth": return "±" + Math.round(60 * v) + " ct";
+    case "mic_gain": { const g = -12 + 36 * v; return (g > 0 ? "+" : "") + g.toFixed(0) + " dB"; }
+    case "split": return NOTE[v % 12] + (Math.floor(v / 12) - 1) + " (" + v + ")";
+    case "octave_transpose": return (v > 0 ? "+" : "") + v;
+    case "bend_range": return "±" + v + " st";
+    default: return pct(v);
+  }
+}
+
+/* ============================================================== the controls */
+const LABEL = {
+  volume: "Volume", lvl_str: "Strings", lvl_voice: "Human voice", lvl_org: "Organ", direct_mic: "Direct mic",
+  ext_ens: "Ext in to ensemble", out_tone: "Master tone", zone_voc: "Vocoder keys", mic_gain: "Mic level", voc_tone: "Vocoder tone",
+  ens_voc: "Ensemble", sibilance: "Sibilance", hv_m8_low: "Male 8' lower", hv_m4_low: "Male 4' lower", hv_m8_up: "Male 8' upper",
+  hv_f4_up: "Female 4' upper", att_voice: "Attack", ens_voice: "Ensemble", zone_str: "Strings keys", str_reg: "Register", att_str: "Attack",
+  tone: "Tone", att_legato: "Attack on legato", vib_str: "Vibrato on strings", zone_org: "Organ keys", org_8: "8'", org_4: "4'", org_2: "2'",
+  org_1: "1'", org_tone: "Tone", ens_org: "Ensemble", vib_org: "Vibrato on organ", release: "Release", rel_mode: "Release mode",
+  ens_mode: "Ensemble mode", ens_depth: "Depth", ens_rate: "Speed", vib_rate: "Rate", vib_delay: "Delay", vib_depth: "Depth",
+  ps_mode: "Mode", ps_set: "Pitch set", ps_time: "Time", ps_fader: "Pitch down", tune: "Tune", tune_ref: "Reference A",
+  bend_range: "Bend range", octave_transpose: "Octave", split: "Split point", velocity: "Velocity", voc_pedal: "Pedal (CC 64)",
+};
+const TITLES = {
+  balance: ["Balance", "levels"], vocoder: ["Vocoder", "10 bands"], voice: ["Human voice", "4 switches"], strings: ["Strings", "RS-09 registers"],
+  organ: ["Organ", "RS-09"], envelope: ["Envelope", "one release for all"], ensemble: ["Ensemble", "modes I and II"], vibrato: ["Vibrato", "delayed"],
+  pitch: ["Pitch shift and tuning", "all sections"], keys: ["Keyboard and pedals", "CC 64 and CC 66"],
+};
+const LAYOUT = [
+  { id: "balance", cls: "c7", rows: [[
+    ["fader", "lvl_str"], ["fader", "lvl_voice"], ["fader", "lvl_org"], ["fader", "direct_mic"], ["fader", "ext_ens"], ["knob", "out_tone"], ["knob", "volume"] ]] },
+  { id: "envelope", cls: "c5", rows: [[["fader", "release"], ["seg", "rel_mode"]]], extra: "env" },
+  { id: "vocoder", cls: "c4", rows: [[["seg", "zone_voc"]], [["knob", "mic_gain"], ["knob", "voc_tone"], ["knob", "sibilance"], ["tab", "ens_voc"]]] },
+  { id: "voice", cls: "c4", rows: [[["tab", "hv_m8_low"], ["tab", "hv_m4_low"], ["tab", "hv_m8_up"], ["tab", "hv_f4_up"]], [["knob", "att_voice"], ["tab", "ens_voice"]]] },
+  { id: "strings", cls: "c4", rows: [[["seg", "zone_str"]], [["seg", "str_reg"]], [["knob", "att_str"], ["knob", "tone"], ["seg", "att_legato"], ["tab", "vib_str"]]] },
+  { id: "organ", cls: "c6", rows: [[["seg", "zone_org"]], [["fader", "org_8"], ["fader", "org_4"], ["fader", "org_2"], ["fader", "org_1"], ["seg", "org_tone"], ["tab", "ens_org"], ["tab", "vib_org"]]] },
+  { id: "ensemble", cls: "c3", rows: [[["seg", "ens_mode"]], [["knob", "ens_depth"], ["knob", "ens_rate"]]] },
+  { id: "vibrato", cls: "c3", rows: [[["knob", "vib_rate"], ["knob", "vib_delay"], ["knob", "vib_depth"]]] },
+  { id: "pitch", cls: "c8", rows: [[["seg", "ps_mode"]], [["knob", "ps_set"], ["knob", "ps_time"], ["knob", "ps_fader"], ["knob", "tune"], ["seg", "tune_ref"]], [["step", "bend_range"], ["step", "octave_transpose"]]] },
+  { id: "keys", cls: "c4", rows: [[["step", "split"], ["seg", "velocity"]], [["seg", "voc_pedal"]]] },
+];
+const dirty = { "*": 1 };
+const refreshers = {};   /* key -> fn */
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+function arcPath(cx, cy, r, a0, a1) {
+  const p = (a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return "M" + x0.toFixed(2) + " " + y0.toFixed(2) + " A" + r + " " + r + " 0 " + (a1 - a0 > Math.PI ? 1 : 0) + " 1 " + x1.toFixed(2) + " " + y1.toFixed(2);
+}
+
+/* drag, wheel, keys, double-click: shared by knobs and faders */
+function bindValue(node, key, opts) {
+  const d = D[key];
+  const span = d.max - d.min;
+  const setNorm = (n) => send(key, d.min + clamp(n, 0, 1) * span);
+  const norm = () => (P[key] - d.min) / span;
+  let y0 = 0, n0 = 0, drag = false;
+  node.addEventListener("pointerdown", (e) => {
+    drag = true; y0 = e.clientY; n0 = norm();
+    node.setPointerCapture(e.pointerId);
+    if (opts.fader) {
+      const r = node.getBoundingClientRect();
+      const n = 1 - (e.clientY - r.top - 4) / (r.height - 8);
+      setNorm(n); n0 = norm();
+    }
+    e.preventDefault(); node.focus();
+  });
+  node.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const range = opts.fader ? node.getBoundingClientRect().height - 8 : 170;
+    setNorm(n0 + (y0 - e.clientY) / range * (e.shiftKey ? 0.2 : 1));
+  });
+  const end = () => { drag = false; };
+  node.addEventListener("pointerup", end); node.addEventListener("pointercancel", end);
+  node.addEventListener("wheel", (e) => { e.preventDefault(); setNorm(norm() + (e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? 0.005 : 0.02)); }, { passive: false });
+  node.addEventListener("dblclick", () => send(key, d.default));
+  node.addEventListener("keydown", (e) => {
+    const k = e.key;
+    const st = e.shiftKey ? 0.05 : 0.01;
+    if (k === "ArrowUp" || k === "ArrowRight") setNorm(norm() + st);
+    else if (k === "ArrowDown" || k === "ArrowLeft") setNorm(norm() - st);
+    else if (k === "PageUp") setNorm(norm() + 0.1);
+    else if (k === "PageDown") setNorm(norm() - 0.1);
+    else if (k === "Home") setNorm(0);
+    else if (k === "End") setNorm(1);
+    else return;
+    e.preventDefault();
+  });
+  node.setAttribute("role", "slider"); node.tabIndex = 0;
+  node.setAttribute("aria-orientation", "vertical");
+  node.setAttribute("aria-valuemin", "0"); node.setAttribute("aria-valuemax", "100");
+}
+
+function mkKnob(key) {
+  const wrap = el("div", "ctl");
+  const kn = el("div", "knob");
+  const A0 = Math.PI * 0.75, A1 = Math.PI * 2.25;
+  kn.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><path class="tr" d="' + arcPath(32, 32, 26, A0, A1) + '"/><path class="va"/><circle class="cap" cx="32" cy="32" r="17"/><line class="nd" x1="32" y1="32" x2="32" y2="18"/></svg>';
+  const va = kn.querySelector(".va"), nd = kn.querySelector(".nd");
+  const nm = el("div", "nm", LABEL[key]), vl = el("div", "vl");
+  wrap.append(kn, vl, nm);
+  kn.setAttribute("aria-label", D[key].name);
+  bindValue(kn, key, {});
+  refreshers[key] = () => {
+    const d = D[key], n = (P[key] - d.min) / (d.max - d.min), a = A0 + n * (A1 - A0);
+    va.setAttribute("d", n < 0.004 ? "" : arcPath(32, 32, 26, A0, a));
+    nd.setAttribute("transform", "rotate(" + ((a - Math.PI * 1.5) * 180 / Math.PI).toFixed(1) + " 32 32)");
+    vl.textContent = fmt(key, P[key]);
+    kn.setAttribute("aria-valuenow", String(Math.round(n * 100)));
+    kn.setAttribute("aria-valuetext", fmt(key, P[key]));
+  };
+  return wrap;
+}
+function mkFader(key) {
+  const wrap = el("div", "ctl");
+  const f = el("div", "fader");
+  f.innerHTML = '<div class="rail"><div class="fill"></div></div><div class="hd"></div>';
+  const fill = f.querySelector(".fill"), hd = f.querySelector(".hd");
+  const nm = el("div", "nm", LABEL[key]), vl = el("div", "vl");
+  wrap.append(vl, f, nm);
+  f.setAttribute("aria-label", D[key].name);
+  bindValue(f, key, { fader: true });
+  refreshers[key] = () => {
+    const d = D[key], n = (P[key] - d.min) / (d.max - d.min);
+    fill.style.height = (n * 100) + "%";
+    hd.style.top = "calc(4px + (100% - 8px) * " + (1 - n).toFixed(4) + ")";
+    vl.textContent = fmt(key, P[key]);
+    f.setAttribute("aria-valuenow", String(Math.round(n * 100)));
+    f.setAttribute("aria-valuetext", fmt(key, P[key]));
+  };
+  return wrap;
+}
+function mkTablet(key) {
+  const wrap = el("div", "tabl");
+  const b = el("button"); b.type = "button"; b.setAttribute("aria-label", D[key].name);
+  b.addEventListener("click", () => send(key, P[key] > 0.5 ? 0 : 1));
+  wrap.append(b, el("div", "nm", LABEL[key]));
+  refreshers[key] = () => b.setAttribute("aria-pressed", P[key] > 0.5 ? "true" : "false");
+  return wrap;
+}
+function mkSeg(key) {
+  const wrap = el("div", "seg");
+  wrap.setAttribute("role", "group"); wrap.setAttribute("aria-label", D[key].name);
+  const opts = el("div", "opts");
+  const bs = D[key].options.map((o, i) => {
+    const b = el("button", "", o); b.type = "button";
+    b.addEventListener("click", () => send(key, i));
+    opts.append(b); return b;
+  });
+  wrap.append(el("div", "nm", LABEL[key]), opts);
+  refreshers[key] = () => bs.forEach((b, i) => b.setAttribute("aria-pressed", Math.round(P[key]) === i ? "true" : "false"));
+  return wrap;
+}
+function mkStep(key) {
+  const wrap = el("div", "step");
+  const c = el("div", "ctrl"), m = el("button", "", "−"), pl = el("button", "", "+"), o = el("output");
+  m.type = pl.type = "button";
+  m.setAttribute("aria-label", "Lower " + D[key].name); pl.setAttribute("aria-label", "Raise " + D[key].name);
+  const big = key === "split" ? 12 : 1;
+  m.addEventListener("click", (e) => send(key, P[key] - (e.shiftKey ? big : 1)));
+  pl.addEventListener("click", (e) => send(key, P[key] + (e.shiftKey ? big : 1)));
+  c.append(m, o, pl);
+  wrap.append(el("div", "nm", LABEL[key]), c);
+  refreshers[key] = () => { o.textContent = fmt(key, P[key]); };
+  return wrap;
+}
+const MAKERS = { knob: mkKnob, fader: mkFader, tab: mkTablet, seg: mkSeg, step: mkStep };
+
+function build() {
+  const grid = document.getElementById("grid");
+  for (const sec of LAYOUT) {
+    const p = el("section", "panel " + sec.cls);
+    p.id = "p-" + sec.id;
+    const h = el("h2"); h.id = "h-" + sec.id;
+    h.append(document.createTextNode(TITLES[sec.id][0]), el("small", "", TITLES[sec.id][1]));
+    p.setAttribute("aria-labelledby", h.id);
+    p.append(h);
+    for (const row of sec.rows) {
+      const r = el("div", "row");
+      for (const [type, key] of row) {
+        if (!D[key]) throw new Error("layout lists unknown parameter " + key);
+        r.append(MAKERS[type](key));
+      }
+      p.append(r);
+      p.append(Object.assign(el("div"), { style: "height:12px" }));
+    }
+    if (sec.extra === "env") {
+      const box = el("div", "envbox");
+      box.innerHTML = '<canvas id="envView" width="640" height="236" aria-label="Two notes and the envelope they make"></canvas><p id="envNote"></p>';
+      p.append(box);
+    }
+    grid.append(p);
+  }
+  /* every parameter must have a control */
+  const shown = new Set(); LAYOUT.forEach((s) => s.rows.forEach((r) => r.forEach(([, k]) => shown.add(k))));
+  DEFS.forEach((d) => { if (!shown.has(d.key)) throw new Error("no control for " + d.key); });
+
+  const sel = document.getElementById("preset");
+  PRESETS.forEach((p, i) => { const o = el("option", "", String(i).padStart(2, "0") + "  " + p.name); o.value = i; sel.append(o); });
+  sel.addEventListener("change", () => choosePreset(+sel.value));
+  document.getElementById("pPrev").addEventListener("click", () => choosePreset(curPreset - 1));
+  document.getElementById("pNext").addEventListener("click", () => choosePreset(curPreset + 1));
+}
+
+let toastT = 0;
+function toast(s) {
+  const t = document.getElementById("toast");
+  t.textContent = s; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 1500);
+}
+
+function setWhere() {
+  const e = document.getElementById("where"), t = document.getElementById("whereTxt");
+  if (mode === "demo") { e.dataset.state = "demo"; t.textContent = "Demo, not connected to a Move"; return; }
+  e.dataset.state = gotData ? "live" : "wait";
+  t.textContent = gotData ? "VDP33, live" : "Waiting for VDP33";
+}
+function setFoot() {
+  document.getElementById("foot").textContent = mode === "demo"
+    ? "This is a demo. On the Move, open schwung-manager at move.local:7700, then Remote UI: with VDP33 in a track slot its editor shows there. Every control follows the Move as you turn it, and the Move follows the browser."
+    : "Every control follows the Move as you turn it, and the Move follows the browser. Double-click a knob or fader to reset it; Shift gives fine steps. Schwung's own effects can follow VDP33 in the slot's FX positions.";
+}
+
+/* ====================================================== the envelope picture */
+/* A model of the three Release Modes on two notes; times come from the same curves as the engine.
+ * Free: one envelope per key, a replayed key picks its own tail up again.
+ * I Wait: with no key held, a new key waits until the tail is below 2%.
+ * II Hold: a replayed key gets a new voice and the old tail runs on.           */
+function drawEnv() {
+  const cv = document.getElementById("envView"); if (!cv) return;
+  const g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+  const T = 8, dt = 0.005, N = Math.round(T / dt);
+  const att = attTime(P.att_str), rel = relTime(P.release);
+  const mode = Math.round(P.rel_mode);
+  const coef = (t) => 1 - Math.exp(-dt / Math.max(t / 3, 0.0003));
+  const ca = coef(att), cr = coef(rel);
+  const n1 = [0.3, 1.5], n2 = 2.4, n2off = 4.6;   /* first note on/off, second note on/off */
+  const out = [new Float32Array(N), new Float32Array(N)];
+  let e1 = 0, e2 = 0, started2 = false;
+  for (let i = 0; i < N; i++) {
+    const t = i * dt;
+    const gate1 = t >= n1[0] && t < n1[1];
+    if (!started2 && t >= n2 && t < n2off && (mode !== 1 || e1 <= 0.02)) started2 = true;
+    const gate2 = started2 && t < n2off;
+    if (mode === 0) {                      /* same key: one envelope */
+      const g1 = gate1 || gate2;
+      e1 += ((g1 ? 1 : 0) - e1) * (g1 ? ca : cr);
+      out[0][i] = e1;
+    } else {
+      e1 += ((gate1 ? 1 : 0) - e1) * (gate1 ? ca : cr);
+      e2 += ((gate2 ? 1 : 0) - e2) * (gate2 ? ca : cr);
+      out[0][i] = e1; out[1][i] = e2;
+    }
+  }
+  const x = (t) => 8 + t / T * (W - 16), y = (v) => H - 22 - v * (H - 52);
+  g.strokeStyle = "rgba(246,236,255,.14)"; g.lineWidth = 1;
+  for (let s = 0; s <= T; s++) { g.beginPath(); g.moveTo(x(s), 10); g.lineTo(x(s), H - 22); g.stroke(); }
+  g.fillStyle = "rgba(246,236,255,.45)"; g.font = "600 17px 'Space Grotesk', sans-serif";
+  for (let s = 0; s < T; s += 2) g.fillText(s + " s", x(s) + 3, H - 5);
+  /* key presses */
+  g.fillStyle = "rgba(255,216,74,.9)";
+  g.fillRect(x(n1[0]), H - 18, x(n1[1]) - x(n1[0]), 4);
+  g.fillRect(x(n2), H - 18, x(n2off) - x(n2), 4);
+  const stroke = (arr, c) => {
+    g.beginPath();
+    for (let i = 0; i < N; i++) { const px = x(i * dt), py = y(arr[i]); if (i) g.lineTo(px, py); else g.moveTo(px, py); }
+    g.strokeStyle = c; g.lineWidth = 3; g.lineJoin = "round"; g.stroke();
+  };
+  const gr = g.createLinearGradient(0, 0, W, 0);
+  gr.addColorStop(0, "#ff2e93"); gr.addColorStop(.35, "#ffe14a"); gr.addColorStop(.7, "#26e8d8"); gr.addColorStop(1, "#a24dff");
+  if (mode === 0) { stroke(out[0], gr); }
+  else {
+    stroke(out[0], "#ff8f1f"); stroke(out[1], "#26e8d8");
+  }
+  const note = document.getElementById("envNote");
+  if (note) note.textContent = mode === 0
+    ? "Free: the second press picks the old tail up again (VDP33 original)."
+    : mode === 1
+      ? "I Wait: the second press sounds only once the first tail has faded out (below about -35 dB)."
+      : "II Hold: the first tail runs to its end while the replayed key sounds on its own.";
+}
+
+/* ======================================================== the aura, the wheel */
+const SPEC = ["#ff2e93", "#ff6a3d", "#ff8f1f", "#ffc22e", "#ffe14a", "#9dff4a", "#26e8d8", "#2ab4ff", "#4d7bff", "#a24dff"];
+const played = new Set();
+function drawWheel(t) {
+  const cv = document.getElementById("wheel"); if (!cv) return;
+  const g = cv.getContext("2d"), S = cv.width, c = S / 2;
+  g.clearRect(0, 0, S, S);
+  const level = clamp(P.lvl_str + P.lvl_voice + P.lvl_org, 0.25, 1.6) / 1.6;
+  const act = played.size ? 1 : 0.55;
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i / 10 * Math.PI * 2;
+    const m = 0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.23) + i * 1.7);
+    const r0 = 34, r1 = r0 + 12 + (S / 2 - r0 - 14) * (0.15 + 0.85 * m * level) * act;
+    g.strokeStyle = SPEC[i]; g.lineWidth = 8; g.lineCap = "round";
+    g.shadowColor = SPEC[i]; g.shadowBlur = 10;
+    g.beginPath(); g.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0); g.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); g.stroke();
+  }
+  g.shadowBlur = 0;
+  g.strokeStyle = "rgba(246,236,255,.55)"; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(c, c, 26, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "rgba(246,236,255,.9)"; g.beginPath(); g.arc(c, c, 5, 0, Math.PI * 2); g.fill();
+}
+const blobs = [];
+for (let i = 0; i < 8; i++) blobs.push({ cx: Math.random(), cy: Math.random(), rx: .15 + Math.random() * .3, ry: .15 + Math.random() * .3, f: .05 + Math.random() * .08, ph: Math.random() * 6.28, r: .22 + Math.random() * .22, col: SPEC[(i * 3) % 10] });
+function drawAura(t) {
+  const cv = document.getElementById("aura");
+  if (cv.width !== 320) { cv.width = 320; cv.height = 200; }
+  const g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.globalCompositeOperation = "source-over";
+  g.fillStyle = "#0b0420"; g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = "lighter";
+  for (const b of blobs) {
+    const x = (0.5 + (b.cx - 0.5) * 0.9 + b.rx * Math.sin(t * b.f * 2 + b.ph)) * W;
+    const y = (0.5 + (b.cy - 0.5) * 0.9 + b.ry * Math.cos(t * b.f * 2.7 + b.ph * 1.3)) * H;
+    const r = b.r * W * (0.8 + 0.25 * Math.sin(t * b.f * 3 + b.ph));
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, b.col + "66"); gr.addColorStop(0.55, b.col + "22"); gr.addColorStop(1, b.col + "00");
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  }
+}
+
+/* ===================================== the browser preview (demo only, rough) */
+const Pre = (function () {
+  let ctx = null, bus = null, dl = [null, null], lfo = null, voices = {};
+  function init() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    bus = ctx.createGain(); bus.gain.value = 0.22;
+    const m = ctx.createChannelMerger(2), dry = ctx.createGain(); dry.gain.value = 0.7;
+    bus.connect(dry); dry.connect(ctx.destination);
+    lfo = ctx.createOscillator(); lfo.frequency.value = 0.6; lfo.start();
+    for (let c = 0; c < 2; c++) {
+      const d = ctx.createDelay(0.05); d.delayTime.value = 0.012 + c * 0.004;
+      const dep = ctx.createGain(); dep.gain.value = 0.003; lfo.connect(dep); dep.connect(d.delayTime);
+      const pan = ctx.createStereoPanner(); pan.pan.value = c ? 0.8 : -0.8;
+      bus.connect(d); d.connect(pan); pan.connect(ctx.destination); dl[c] = d;
+    }
+  }
+  const zoneOk = (z, n) => z === 3 || (z === 1 && n < P.split) || (z === 2 && n >= P.split);
+  function on(n) {
+    if (!document.getElementById("soundOn").checked) return;
+    init(); if (ctx.state === "suspended") ctx.resume();
+    off(n, true);
+    const f = 440 * Math.pow(2, (n + 12 * P.octave_transpose - 69 + (P.tune - 0.5) + (P.tune_ref ? 0.0784 : 0)) / 12);
+    const env = ctx.createGain(); env.gain.value = 0;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass";
+    lp.frequency.value = P.org_tone ? 9000 : 1500;
+    lp.connect(env); env.connect(bus);
+    const oscs = [];
+    if (P.lvl_org > 0 && zoneOk(Math.round(P.zone_org), n)) {
+      const w = [P.org_8, 0.9 * P.org_4, 0.7 * P.org_2, 0.5 * P.org_1];
+      w.forEach((wt, i) => { if (wt < 1e-3) return; const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = "square"; o.frequency.value = f * (1 << i); gn.gain.value = wt * P.lvl_org * P.lvl_org * 0.5; o.connect(gn); gn.connect(lp); o.start(); oscs.push(o); });
+    }
+    if (P.lvl_str > 0 && zoneOk(Math.round(P.zone_str), n)) {
+      const lp2 = ctx.createBiquadFilter(); lp2.type = "lowpass"; lp2.frequency.value = 400 * Math.pow(30, P.tone); lp2.connect(env);
+      const reg = Math.round(P.str_reg), regs = reg === 0 ? [0.5, 1, 2] : reg === 1 ? [1] : reg === 2 ? [2] : [1, 2];
+      regs.forEach((m) => { const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = m === 0.5 ? "square" : "sawtooth"; o.frequency.value = f * m; gn.gain.value = P.lvl_str * P.lvl_str * 0.35; o.connect(gn); gn.connect(lp2); o.start(); oscs.push(o); });
+    }
+    if (!oscs.length) return;
+    const att = Math.max(attTime(P.att_str), 0.004);
+    env.gain.setValueAtTime(0, ctx.currentTime); env.gain.linearRampToValueAtTime(1, ctx.currentTime + att);
+    voices[n] = { env, oscs };
+  }
+  function off(n, quick) {
+    const v = voices[n]; if (!v) return; delete voices[n];
+    const r = quick ? 0.02 : Math.max(relTime(P.release), 0.02);
+    const t = ctx.currentTime;
+    v.env.gain.cancelScheduledValues(t); v.env.gain.setValueAtTime(v.env.gain.value, t);
+    v.env.gain.setTargetAtTime(0, t, r / 3);
+    v.oscs.forEach((o) => o.stop(t + r * 1.5 + 0.1));
+  }
+  return { on, off };
+})();
+
+function buildKeys() {
+  const kb = document.getElementById("kbd");
+  const first = 48, last = 83, blackSet = new Set([1, 3, 6, 8, 10]);
+  const byNote = {};
+  for (let n = first; n <= last; n++) {
+    const k = el("div", "key" + (blackSet.has(n % 12) ? " blk" : ""));
+    k.dataset.note = n; k.title = NOTE[n % 12] + (Math.floor(n / 12) - 1);
+    kb.append(k); byNote[n] = k;
+  }
+  const press = (n) => { played.add(n); byNote[n] && byNote[n].classList.add("on"); Pre.on(n); };
+  const release = (n) => { played.delete(n); byNote[n] && byNote[n].classList.remove("on"); Pre.off(n); };
+  kb.addEventListener("pointerdown", (e) => { const k = e.target.closest(".key"); if (!k) return; k.setPointerCapture(e.pointerId); k._n = +k.dataset.note; press(k._n); e.preventDefault(); });
+  kb.addEventListener("pointerup", (e) => { const k = e.target.closest(".key"); if (k && k._n !== undefined) { release(k._n); k._n = undefined; } });
+  kb.addEventListener("pointercancel", (e) => { const k = e.target.closest(".key"); if (k && k._n !== undefined) { release(k._n); k._n = undefined; } });
+  const map = "awsedftgyhujkolp", held = {};
+  window.addEventListener("keydown", (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || /input|select|textarea/i.test(e.target.tagName)) return;
+    const i = map.indexOf(e.key.toLowerCase()); if (i < 0) return;
+    const n = 60 + i; if (held[n]) return; held[n] = 1; press(n);
+  });
+  window.addEventListener("keyup", (e) => { const i = map.indexOf(e.key.toLowerCase()); if (i < 0) return; const n = 60 + i; held[n] = 0; release(n); });
+}
+
+/* ================================================================= frame loop */
+function refresh() {
+  const all = dirty["*"];
+  if (all) {
+    document.getElementById("preset").value = String(curPreset);
+  }
+  let any = all, envChanged = all;
+  for (const k in refreshers) {
+    if (all || dirty[k]) { refreshers[k](); any = true; if (k === "release" || k === "rel_mode" || k === "att_str") envChanged = true; }
+  }
+  if (any) { for (const k in dirty) delete dirty[k]; }
+  if (envChanged) drawEnv();
+}
+let t0 = nowMs();
+function frame() {
+  refresh();
+  const t = (nowMs() - t0) / 1000;
+  if (!reduced) { drawWheel(t); drawAura(t); requestAnimationFrame(frame); }
+}
+
+build();
+setWhere(); setFoot();
+if (mode === "demo") { document.getElementById("demoKeys").hidden = false; buildKeys(); gotData = true; setWhere(); }
+else {
+  RT.onParamChange(onParams);
+  setTimeout(() => { if (!gotData && RT.resubscribe) RT.resubscribe(); }, 1500);
+}
+refresh();
+if (reduced) { drawWheel(2); drawAura(6); setInterval(refresh, 120); }
+else requestAnimationFrame(frame);
+/* exposed for tests */
+window.vdpEditor = { P, D, PRESETS, get mode() { return mode; }, get preset() { return curPreset; }, onParams, send, applyPreset, choosePreset, refresh };
+})();
+</script>
+</body>
+</html>
